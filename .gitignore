@@ -6,11 +6,11 @@ frontend/.env.local
 frontend/.vite/
 
 # --- Python / solver ---
-backend/__pycache__/
-backend/*.pyc
-backend/.venv/
-backend/venv/
-backend/*.egg-info/
+solver/__pycache__/
+solver/*.pyc
+solver/.venv/
+solver/venv/
+solver/*.egg-info/
 
 # --- Supabase / secrets ---
 .env
