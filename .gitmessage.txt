@@ -1,0 +1,7 @@
+type: short summary (max ~50 chars)
+
+# Types: feature | fix | ui | docs | data | test | chore
+# Example: feature: add PT teacher availability form
+#
+# Optional longer description below (why, not just what):
+
