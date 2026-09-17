@@ -1,5 +1,9 @@
 from collections import defaultdict
 from ortools.sat.python import cp_model
+import json
+from pathlib import Path
+from collections import defaultdict
+from ortools.sat.python import cp_model
 
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 SLOTS = 10            # 08:30-18:30, 1 hour each
@@ -27,6 +31,13 @@ lessons = [
     dict(id="L9",  module="Business Comm",     group="DIT202601",     lecturer="Mr Raj", hours=3, lab=False),
     dict(id="L10", module="IT Fundamentals",   group="DIT202601",     lecturer="Ms Lim", hours=2, lab=False),
 ]
+# ---------- LOAD DATA ----------
+DATA_FILE = Path(__file__).parent.parent / "data" / "samples" / "mock.json"
+data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+
+rooms = data["rooms"]
+groups = data["groups"]
+lessons = data["lessons"]
 by_id = {l["id"]: l for l in lessons}
 
 # ---------- MODEL ----------

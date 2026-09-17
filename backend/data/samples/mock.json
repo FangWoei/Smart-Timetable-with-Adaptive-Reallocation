@@ -1,0 +1,96 @@
+{
+  "rooms": {
+    "R101": { "cap": 40, "type": "lecture" },
+    "R102": { "cap": 40, "type": "lecture" },
+    "LAB1": { "cap": 40, "type": "lab" },
+    "HALL": { "cap": 120, "type": "lecture" },
+    "R201": { "cap": 60, "type": "lecture" }
+  },
+  "groups": {
+    "BSCS202509-L6": 35,
+    "BSCS202509-L7": 28,
+    "DIT202601": 60
+  },
+  "lessons": [
+    {
+      "id": "L1",
+      "module": "Programming 1",
+      "group": "BSCS202509-L6",
+      "lecturer": "Dr Tan",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "L2",
+      "module": "Programming 1 Lab",
+      "group": "BSCS202509-L6",
+      "lecturer": "Dr Tan",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "L3",
+      "module": "Programming 1",
+      "group": "BSCS202509-L7",
+      "lecturer": "Dr Tan",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "L4",
+      "module": "Programming 1 Lab",
+      "group": "BSCS202509-L7",
+      "lecturer": "Dr Tan",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "L5",
+      "module": "Maths",
+      "group": "BSCS202509-L6",
+      "lecturer": "Ms Lim",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "L6",
+      "module": "Maths",
+      "group": "BSCS202509-L7",
+      "lecturer": "Ms Lim",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "L7",
+      "module": "Networking",
+      "group": "BSCS202509-L6",
+      "lecturer": "PT 1",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "L8",
+      "module": "Networking Lab",
+      "group": "BSCS202509-L7",
+      "lecturer": "PT 1",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "L9",
+      "module": "Business Comm",
+      "group": "DIT202601",
+      "lecturer": "Mr Raj",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "L10",
+      "module": "IT Fundamentals",
+      "group": "DIT202601",
+      "lecturer": "Ms Lim",
+      "hours": 2,
+      "lab": false
+    }
+  ]
+}
