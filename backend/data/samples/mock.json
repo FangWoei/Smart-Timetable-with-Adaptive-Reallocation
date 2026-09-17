@@ -3,8 +3,7 @@
     "R101": { "cap": 40, "type": "lecture" },
     "R102": { "cap": 40, "type": "lecture" },
     "LAB1": { "cap": 40, "type": "lab" },
-    "HALL": { "cap": 120, "type": "lecture" },
-    "R201": { "cap": 60, "type": "lecture" }
+    "HALL": { "cap": 120, "type": "lecture" }
   },
   "groups": {
     "BSCS202509-L6": 35,
