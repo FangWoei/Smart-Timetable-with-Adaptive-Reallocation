@@ -5,6 +5,7 @@ DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 SLOTS = 10            # 08:30-18:30, 1 hour each
 MIDDAY = (4, 5)       # 12:30-13:30 and 13:30-14:30
 MAX_LECT_HOURS = 9
+MAX_GROUP_HOURS = 6
 
 # ---------- MOCK DATA (replace with importer output later) ----------
 rooms = {
@@ -81,6 +82,23 @@ for lec in {l["lecturer"] for l in lessons}:
         over = model.new_int_var(0, SLOTS, f"over_{lec}_{d}")
         model.add(over >= load - MAX_LECT_HOURS)
         penalties.append(5 * over)
+
+# Soft: a group should not study more than 6 hours in one day
+for g in groups:
+    for d in range(len(DAYS)):
+        load = sum(v for t in range(SLOTS) for v in group_use[g, d, t])
+        over = model.new_int_var(0, SLOTS, f"gover_{g}_{d}")
+        model.add(over >= load - MAX_GROUP_HOURS)
+        penalties.append(8 * over)
+
+# Soft: prefer the smallest room that fits, and avoid ending at 18:30
+for (lid, d, s, r), v in x.items():
+    l = by_id[lid]
+    waste = rooms[r]["cap"] - groups[l["group"]]
+    cost = waste // 10
+    if s + l["hours"] == SLOTS:
+        cost += 3
+    penalties.append(cost * v)
 
 model.minimize(sum(penalties))
 
