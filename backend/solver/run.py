@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -8,11 +9,15 @@ DEFAULT_FILE = Path(__file__).parent.parent / "data" / "samples" / "mock.json"
 
 
 def main():
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_FILE
-    data = json.loads(path.read_text(encoding="utf-8"))
+    parser = argparse.ArgumentParser(description="Generate a timetable")
+    parser.add_argument("file", nargs="?", default=DEFAULT_FILE, type=Path)
+    parser.add_argument("--time", type=float, default=10, help="time limit in seconds")
+    args = parser.parse_args()
+
+    data = json.loads(args.file.read_text(encoding="utf-8"))
 
     try:
-        result = solve(data)
+        result = solve(data, time_limit=args.time)
     except SolverError as e:
         print("Error:", e)
         sys.exit(1)

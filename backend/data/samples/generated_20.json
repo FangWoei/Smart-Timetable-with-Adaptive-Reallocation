@@ -1,0 +1,1064 @@
+{
+  "rooms": {
+    "R101": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R102": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R103": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R104": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R105": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R106": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R107": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R108": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R109": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R110": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R111": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R112": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "HALL1": {
+      "cap": 120,
+      "type": "lecture"
+    },
+    "HALL2": {
+      "cap": 120,
+      "type": "lecture"
+    },
+    "LAB1": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB2": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB3": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB4": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB5": {
+      "cap": 40,
+      "type": "lab"
+    }
+  },
+  "groups": {
+    "G01": 24,
+    "G02": 35,
+    "G03": 30,
+    "G04": 34,
+    "G05": 37,
+    "G06": 26,
+    "G07": 32,
+    "G08": 32,
+    "G09": 25,
+    "G10": 34,
+    "G11": 38,
+    "G12": 37,
+    "G13": 28,
+    "G14": 39,
+    "G15": 40,
+    "G16": 30,
+    "G17": 20,
+    "G18": 36,
+    "G19": 29,
+    "G20": 33
+  },
+  "lessons": [
+    {
+      "id": "G01-M1",
+      "module": "Module 1",
+      "group": "G01",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G01-M2",
+      "module": "Module 2",
+      "group": "G01",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G01-M3",
+      "module": "Module 3",
+      "group": "G01",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G01-M4",
+      "module": "Module 4",
+      "group": "G01",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G01-M5",
+      "module": "Module 5 Lab",
+      "group": "G01",
+      "lecturer": "Lecturer 04",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G01-M6",
+      "module": "Module 6 Lab",
+      "group": "G01",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G02-M1",
+      "module": "Module 1",
+      "group": "G02",
+      "lecturer": "Lecturer 01",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G02-M2",
+      "module": "Module 2",
+      "group": "G02",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G02-M3",
+      "module": "Module 3",
+      "group": "G02",
+      "lecturer": "Lecturer 12",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G02-M4",
+      "module": "Module 4",
+      "group": "G02",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G02-M5",
+      "module": "Module 5 Lab",
+      "group": "G02",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G02-M6",
+      "module": "Module 6 Lab",
+      "group": "G02",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G03-M1",
+      "module": "Module 1",
+      "group": "G03",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G03-M2",
+      "module": "Module 2",
+      "group": "G03",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G03-M3",
+      "module": "Module 3",
+      "group": "G03",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G03-M4",
+      "module": "Module 4",
+      "group": "G03",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G03-M5",
+      "module": "Module 5 Lab",
+      "group": "G03",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G03-M6",
+      "module": "Module 6 Lab",
+      "group": "G03",
+      "lecturer": "Lecturer 04",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G04-M1",
+      "module": "Module 1",
+      "group": "G04",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G04-M2",
+      "module": "Module 2",
+      "group": "G04",
+      "lecturer": "Lecturer 06",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G04-M3",
+      "module": "Module 3",
+      "group": "G04",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G04-M4",
+      "module": "Module 4",
+      "group": "G04",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G04-M5",
+      "module": "Module 5 Lab",
+      "group": "G04",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G04-M6",
+      "module": "Module 6 Lab",
+      "group": "G04",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G05-M1",
+      "module": "Module 1",
+      "group": "G05",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G05-M2",
+      "module": "Module 2",
+      "group": "G05",
+      "lecturer": "Lecturer 03",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G05-M3",
+      "module": "Module 3",
+      "group": "G05",
+      "lecturer": "Lecturer 02",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G05-M4",
+      "module": "Module 4",
+      "group": "G05",
+      "lecturer": "Lecturer 12",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G05-M5",
+      "module": "Module 5 Lab",
+      "group": "G05",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G05-M6",
+      "module": "Module 6 Lab",
+      "group": "G05",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G06-M1",
+      "module": "Module 1",
+      "group": "G06",
+      "lecturer": "Lecturer 05",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G06-M2",
+      "module": "Module 2",
+      "group": "G06",
+      "lecturer": "Lecturer 10",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G06-M3",
+      "module": "Module 3",
+      "group": "G06",
+      "lecturer": "Lecturer 09",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G06-M4",
+      "module": "Module 4",
+      "group": "G06",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G06-M5",
+      "module": "Module 5 Lab",
+      "group": "G06",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G06-M6",
+      "module": "Module 6 Lab",
+      "group": "G06",
+      "lecturer": "Lecturer 04",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G07-M1",
+      "module": "Module 1",
+      "group": "G07",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G07-M2",
+      "module": "Module 2",
+      "group": "G07",
+      "lecturer": "Lecturer 06",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G07-M3",
+      "module": "Module 3",
+      "group": "G07",
+      "lecturer": "Lecturer 02",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G07-M4",
+      "module": "Module 4",
+      "group": "G07",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G07-M5",
+      "module": "Module 5 Lab",
+      "group": "G07",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G07-M6",
+      "module": "Module 6 Lab",
+      "group": "G07",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G08-M1",
+      "module": "Module 1",
+      "group": "G08",
+      "lecturer": "Lecturer 06",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G08-M2",
+      "module": "Module 2",
+      "group": "G08",
+      "lecturer": "Lecturer 12",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G08-M3",
+      "module": "Module 3",
+      "group": "G08",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G08-M4",
+      "module": "Module 4",
+      "group": "G08",
+      "lecturer": "Lecturer 05",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G08-M5",
+      "module": "Module 5 Lab",
+      "group": "G08",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G08-M6",
+      "module": "Module 6 Lab",
+      "group": "G08",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G09-M1",
+      "module": "Module 1",
+      "group": "G09",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G09-M2",
+      "module": "Module 2",
+      "group": "G09",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G09-M3",
+      "module": "Module 3",
+      "group": "G09",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G09-M4",
+      "module": "Module 4",
+      "group": "G09",
+      "lecturer": "Lecturer 07",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G09-M5",
+      "module": "Module 5 Lab",
+      "group": "G09",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G09-M6",
+      "module": "Module 6 Lab",
+      "group": "G09",
+      "lecturer": "Lecturer 06",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G10-M1",
+      "module": "Module 1",
+      "group": "G10",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G10-M2",
+      "module": "Module 2",
+      "group": "G10",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G10-M3",
+      "module": "Module 3",
+      "group": "G10",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G10-M4",
+      "module": "Module 4",
+      "group": "G10",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G10-M5",
+      "module": "Module 5 Lab",
+      "group": "G10",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G10-M6",
+      "module": "Module 6 Lab",
+      "group": "G10",
+      "lecturer": "Lecturer 06",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G11-M1",
+      "module": "Module 1",
+      "group": "G11",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G11-M2",
+      "module": "Module 2",
+      "group": "G11",
+      "lecturer": "Lecturer 09",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G11-M3",
+      "module": "Module 3",
+      "group": "G11",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G11-M4",
+      "module": "Module 4",
+      "group": "G11",
+      "lecturer": "Lecturer 07",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G11-M5",
+      "module": "Module 5 Lab",
+      "group": "G11",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G11-M6",
+      "module": "Module 6 Lab",
+      "group": "G11",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G12-M1",
+      "module": "Module 1",
+      "group": "G12",
+      "lecturer": "Lecturer 10",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G12-M2",
+      "module": "Module 2",
+      "group": "G12",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G12-M3",
+      "module": "Module 3",
+      "group": "G12",
+      "lecturer": "Lecturer 04",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G12-M4",
+      "module": "Module 4",
+      "group": "G12",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G12-M5",
+      "module": "Module 5 Lab",
+      "group": "G12",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G12-M6",
+      "module": "Module 6 Lab",
+      "group": "G12",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G13-M1",
+      "module": "Module 1",
+      "group": "G13",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G13-M2",
+      "module": "Module 2",
+      "group": "G13",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G13-M3",
+      "module": "Module 3",
+      "group": "G13",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G13-M4",
+      "module": "Module 4",
+      "group": "G13",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G13-M5",
+      "module": "Module 5 Lab",
+      "group": "G13",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G13-M6",
+      "module": "Module 6 Lab",
+      "group": "G13",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G14-M1",
+      "module": "Module 1",
+      "group": "G14",
+      "lecturer": "Lecturer 03",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G14-M2",
+      "module": "Module 2",
+      "group": "G14",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G14-M3",
+      "module": "Module 3",
+      "group": "G14",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G14-M4",
+      "module": "Module 4",
+      "group": "G14",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G14-M5",
+      "module": "Module 5 Lab",
+      "group": "G14",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G14-M6",
+      "module": "Module 6 Lab",
+      "group": "G14",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G15-M1",
+      "module": "Module 1",
+      "group": "G15",
+      "lecturer": "Lecturer 12",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G15-M2",
+      "module": "Module 2",
+      "group": "G15",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G15-M3",
+      "module": "Module 3",
+      "group": "G15",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G15-M4",
+      "module": "Module 4",
+      "group": "G15",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G15-M5",
+      "module": "Module 5 Lab",
+      "group": "G15",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G15-M6",
+      "module": "Module 6 Lab",
+      "group": "G15",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G16-M1",
+      "module": "Module 1",
+      "group": "G16",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G16-M2",
+      "module": "Module 2",
+      "group": "G16",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G16-M3",
+      "module": "Module 3",
+      "group": "G16",
+      "lecturer": "Lecturer 05",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G16-M4",
+      "module": "Module 4",
+      "group": "G16",
+      "lecturer": "Lecturer 10",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G16-M5",
+      "module": "Module 5 Lab",
+      "group": "G16",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G16-M6",
+      "module": "Module 6 Lab",
+      "group": "G16",
+      "lecturer": "Lecturer 04",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G17-M1",
+      "module": "Module 1",
+      "group": "G17",
+      "lecturer": "Lecturer 07",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G17-M2",
+      "module": "Module 2",
+      "group": "G17",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G17-M3",
+      "module": "Module 3",
+      "group": "G17",
+      "lecturer": "Lecturer 08",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G17-M4",
+      "module": "Module 4",
+      "group": "G17",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G17-M5",
+      "module": "Module 5 Lab",
+      "group": "G17",
+      "lecturer": "Lecturer 11",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G17-M6",
+      "module": "Module 6 Lab",
+      "group": "G17",
+      "lecturer": "Lecturer 12",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G18-M1",
+      "module": "Module 1",
+      "group": "G18",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G18-M2",
+      "module": "Module 2",
+      "group": "G18",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G18-M3",
+      "module": "Module 3",
+      "group": "G18",
+      "lecturer": "Lecturer 07",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G18-M4",
+      "module": "Module 4",
+      "group": "G18",
+      "lecturer": "Lecturer 11",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G18-M5",
+      "module": "Module 5 Lab",
+      "group": "G18",
+      "lecturer": "Lecturer 01",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G18-M6",
+      "module": "Module 6 Lab",
+      "group": "G18",
+      "lecturer": "Lecturer 12",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G19-M1",
+      "module": "Module 1",
+      "group": "G19",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G19-M2",
+      "module": "Module 2",
+      "group": "G19",
+      "lecturer": "Lecturer 01",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G19-M3",
+      "module": "Module 3",
+      "group": "G19",
+      "lecturer": "Lecturer 02",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G19-M4",
+      "module": "Module 4",
+      "group": "G19",
+      "lecturer": "Lecturer 05",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G19-M5",
+      "module": "Module 5 Lab",
+      "group": "G19",
+      "lecturer": "Lecturer 12",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G19-M6",
+      "module": "Module 6 Lab",
+      "group": "G19",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G20-M1",
+      "module": "Module 1",
+      "group": "G20",
+      "lecturer": "Lecturer 10",
+      "hours": 3,
+      "lab": false
+    },
+    {
+      "id": "G20-M2",
+      "module": "Module 2",
+      "group": "G20",
+      "lecturer": "Lecturer 03",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G20-M3",
+      "module": "Module 3",
+      "group": "G20",
+      "lecturer": "Lecturer 09",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G20-M4",
+      "module": "Module 4",
+      "group": "G20",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": false
+    },
+    {
+      "id": "G20-M5",
+      "module": "Module 5 Lab",
+      "group": "G20",
+      "lecturer": "Lecturer 10",
+      "hours": 2,
+      "lab": true
+    },
+    {
+      "id": "G20-M6",
+      "module": "Module 6 Lab",
+      "group": "G20",
+      "lecturer": "Lecturer 08",
+      "hours": 2,
+      "lab": true
+    }
+  ]
+}
