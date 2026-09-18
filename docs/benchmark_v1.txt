@@ -1,0 +1,6 @@
+groups | lessons | status     | penalty |   time | problems
+--------------------------------------------------------------
+     5 |      30 | OPTIMAL    |      36 |   2.6s | 0
+    10 |      60 | OPTIMAL    |      54 |   8.0s | 0
+    20 |     120 | OPTIMAL    |      54 |  18.5s | 0
+    40 |     240 | OPTIMAL    |     144 |  42.4s | 0

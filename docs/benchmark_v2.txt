@@ -1,0 +1,8 @@
+Engine: engine_v2
+
+groups | lessons | status     | penalty |   time | problems
+--------------------------------------------------------------
+     5 |      30 | OPTIMAL    |      36 |   0.5s | 0
+    10 |      60 | OPTIMAL    |      54 |   1.1s | 0
+    20 |     120 | OPTIMAL    |      54 |   2.6s | 0
+    40 |     240 | OPTIMAL    |     144 |   8.0s | 0
