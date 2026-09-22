@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from supabase import create_client
+from solver.engine import slot_time
 
 
 def get_client():
@@ -100,3 +101,47 @@ def save_run(sb, result, engine, seconds, note=None):
     sb.table("timetable_entries").insert(entries).execute()
 
     return run["id"]
+
+# ---------- READ OUTPUT ----------
+def list_runs(sb):
+    """All timetable runs, newest first."""
+    return (sb.table("timetable_runs")
+              .select("id, status, penalty, engine, solve_seconds, is_active, note, created_at")
+              .order("id", desc=True)
+              .execute().data)
+
+
+def get_active_timetable(sb):
+    """The active run and its classes, or None if nothing is generated yet."""
+    runs = (sb.table("timetable_runs")
+              .select("id, status, penalty, engine, created_at")
+              .eq("is_active", True)
+              .execute().data)
+    if not runs:
+        return None
+    run = runs[0]
+
+    rows = (sb.table("timetable_entries")
+              .select("day_of_week, start_slot, hours, rooms(code), "
+                      "lessons(code, module_name, intake_groups(code), lecturers(name))")
+              .eq("run_id", run["id"])
+              .execute().data)
+
+    entries = []
+    for r in rows:
+        l = r["lessons"]
+        start = r["start_slot"] - 1
+        entries.append({
+            "lesson_id": l["code"],
+            "module": l["module_name"],
+            "group": l["intake_groups"]["code"],
+            "lecturer": l["lecturers"]["name"] if l["lecturers"] else None,
+            "room": r["rooms"]["code"],
+            "day": r["day_of_week"],
+            "start_slot": r["start_slot"],
+            "hours": r["hours"],
+            "start_time": slot_time(start),
+            "end_time": slot_time(start + r["hours"]),
+        })
+    entries.sort(key=lambda e: (e["group"], e["day"], e["start_slot"]))
+    return {"run": run, "entries": entries}
