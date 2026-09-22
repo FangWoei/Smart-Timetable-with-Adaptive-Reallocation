@@ -112,7 +112,6 @@ function App() {
           </ul>
         </div>
       </section>
-<p>testing</p>
       <div className="ticks"></div>
       <section id="spacer"></section>
     </>
