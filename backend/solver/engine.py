@@ -17,34 +17,46 @@ def slot_time(slot):
     return f"{m // 60:02d}:{m % 60:02d}"
 
 
+def class_size(lesson, groups):
+    """Head count: the stated number, or the sum of the attending groups."""
+    return lesson.get("students") or sum(groups[g] for g in lesson["groups"])
+
+
 def solve(data, time_limit=10, seed=None):
     rooms = data["rooms"]
     groups = data["groups"]
     lessons = data["lessons"]
     by_id = {l["id"]: l for l in lessons}
+    size = {l["id"]: class_size(l, groups) for l in lessons}
 
     model = cp_model.CpModel()
     x = {}
     options = defaultdict(list)
+    class_day = defaultdict(list)
 
     # Switches: one per (lesson, day, start slot, suitable room)
     for l in lessons:
         for d in range(len(DAYS)):
             for s in range(SLOTS - l["hours"] + 1):
                 for r, info in rooms.items():
-                    if info["cap"] < groups[l["group"]]:
+                    if info["cap"] < size[l["id"]]:
                         continue
                     if l["lab"] != (info["type"] == "lab"):
                         continue
                     v = model.new_bool_var(f"{l['id']}_{d}_{s}_{r}")
                     x[l["id"], d, s, r] = v
                     options[l["id"]].append(v)
+                    class_day[l.get("class_id", l["id"]), d].append(v)
 
     # Hard: every lesson placed exactly once
     for l in lessons:
         if not options[l["id"]]:
             raise SolverError(f"No suitable room for {l['id']} {l['module']}")
         model.add_exactly_one(options[l["id"]])
+
+    # Hard: two sessions of the same class never land on the same day
+    for vs in class_day.values():
+        model.add_at_most_one(vs)
 
     # Hard: no room / lecturer / group clashes
     room_use, lect_use, group_use = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -53,7 +65,8 @@ def solve(data, time_limit=10, seed=None):
         for t in range(s, s + l["hours"]):
             room_use[r, d, t].append(v)
             lect_use[l["lecturer"], d, t].append(v)
-            group_use[l["group"], d, t].append(v)
+            for g in l["groups"]:
+                group_use[g, d, t].append(v)
 
     for use in (room_use, lect_use, group_use):
         for vs in list(use.values()):
@@ -89,7 +102,7 @@ def solve(data, time_limit=10, seed=None):
     # Soft: prefer the smallest room that fits, avoid ending at 18:30
     for (lid, d, s, r), v in x.items():
         l = by_id[lid]
-        cost = (rooms[r]["cap"] - groups[l["group"]]) // 10
+        cost = (rooms[r]["cap"] - size[lid]) // 10
         if s + l["hours"] == SLOTS:
             cost += 3
         penalties.append(cost * v)
@@ -113,7 +126,7 @@ def solve(data, time_limit=10, seed=None):
             entries.append({
                 "lesson_id": lid,
                 "module": l["module"],
-                "group": l["group"],
+                "groups": l["groups"],
                 "lecturer": l["lecturer"],
                 "room": r,
                 "day": d + 1,
@@ -122,7 +135,7 @@ def solve(data, time_limit=10, seed=None):
                 "start_time": slot_time(s),
                 "end_time": slot_time(s + l["hours"]),
             })
-    entries.sort(key=lambda e: (e["group"], e["day"], e["start_slot"]))
+    entries.sort(key=lambda e: (e["groups"][0], e["day"], e["start_slot"]))
 
     return {
         "status": solver.status_name(status),

@@ -14,7 +14,7 @@
     {
       "id": "L1",
       "module": "Programming 1",
-      "group": "BSCS202509-L6",
+      "groups": ["BSCS202509-L6"],
       "lecturer": "Dr Tan",
       "hours": 2,
       "lab": false
@@ -22,7 +22,7 @@
     {
       "id": "L2",
       "module": "Programming 1 Lab",
-      "group": "BSCS202509-L6",
+      "groups": ["BSCS202509-L6"],
       "lecturer": "Dr Tan",
       "hours": 2,
       "lab": true
@@ -30,7 +30,7 @@
     {
       "id": "L3",
       "module": "Programming 1",
-      "group": "BSCS202509-L7",
+      "groups": ["BSCS202509-L7"],
       "lecturer": "Dr Tan",
       "hours": 2,
       "lab": false
@@ -38,7 +38,7 @@
     {
       "id": "L4",
       "module": "Programming 1 Lab",
-      "group": "BSCS202509-L7",
+      "groups": ["BSCS202509-L7"],
       "lecturer": "Dr Tan",
       "hours": 2,
       "lab": true
@@ -46,7 +46,7 @@
     {
       "id": "L5",
       "module": "Maths",
-      "group": "BSCS202509-L6",
+      "groups": ["BSCS202509-L6"],
       "lecturer": "Ms Lim",
       "hours": 3,
       "lab": false
@@ -54,7 +54,7 @@
     {
       "id": "L6",
       "module": "Maths",
-      "group": "BSCS202509-L7",
+      "groups": ["BSCS202509-L7"],
       "lecturer": "Ms Lim",
       "hours": 3,
       "lab": false
@@ -62,7 +62,7 @@
     {
       "id": "L7",
       "module": "Networking",
-      "group": "BSCS202509-L6",
+      "groups": ["BSCS202509-L6"],
       "lecturer": "PT 1",
       "hours": 2,
       "lab": false
@@ -70,7 +70,7 @@
     {
       "id": "L8",
       "module": "Networking Lab",
-      "group": "BSCS202509-L7",
+      "groups": ["BSCS202509-L7"],
       "lecturer": "PT 1",
       "hours": 2,
       "lab": true
@@ -78,7 +78,7 @@
     {
       "id": "L9",
       "module": "Business Comm",
-      "group": "DIT202601",
+      "groups": ["DIT202601"],
       "lecturer": "Mr Raj",
       "hours": 3,
       "lab": false
@@ -86,7 +86,7 @@
     {
       "id": "L10",
       "module": "IT Fundamentals",
-      "group": "DIT202601",
+      "groups": ["DIT202601"],
       "lecturer": "Ms Lim",
       "hours": 2,
       "lab": false

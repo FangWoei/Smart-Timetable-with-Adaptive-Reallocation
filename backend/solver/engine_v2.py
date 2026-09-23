@@ -4,7 +4,7 @@ from ortools.sat.python import cp_model
 
 from solver.engine import (
     DAYS, MAX_GROUP_HOURS, MAX_LECT_HOURS, MIDDAY, SLOTS,
-    SolverError, slot_time,
+    SolverError, class_size, slot_time,
 )
 
 
@@ -30,7 +30,8 @@ def plan_times(lessons, rooms, groups, size, time_limit, seed):
     model = cp_model.CpModel()
     x = {}
     lect_use, group_use = defaultdict(list), defaultdict(list)
-    room_demand = defaultdict(list)   # (is_lab, day, slot) -> [(size, switch)]
+    room_demand = defaultdict(list)
+    class_day = defaultdict(list)
     penalties = []
 
     for l in lessons:
@@ -40,11 +41,13 @@ def plan_times(lessons, rooms, groups, size, time_limit, seed):
                 v = model.new_bool_var(f"{l['id']}_{d}_{s}")
                 x[l["id"], d, s] = v
                 choices.append(v)
+                class_day[l.get("class_id", l["id"]), d].append(v)
                 for t in range(s, s + l["hours"]):
                     lect_use[l["lecturer"], d, t].append(v)
-                    group_use[l["group"], d, t].append(v)
+                    for g in l["groups"]:
+                        group_use[g, d, t].append(v)
                     room_demand[l["lab"], d, t].append((size[l["id"]], v))
-                if s + l["hours"] == SLOTS:      # soft: avoid ending at 18:30
+                if s + l["hours"] == SLOTS:
                     penalties.append(3 * v)
         model.add_exactly_one(choices)
 
@@ -52,6 +55,10 @@ def plan_times(lessons, rooms, groups, size, time_limit, seed):
     for use in (lect_use, group_use):
         for vs in use.values():
             model.add_at_most_one(vs)
+
+    # Hard: two sessions of the same class never land on the same day
+    for vs in class_day.values():
+        model.add_at_most_one(vs)
 
     # Hard: every hour, enough rooms of the right type and size
     for is_lab in (False, True):
@@ -123,7 +130,6 @@ def assign_rooms(lessons, rooms, size, times, time_limit, seed):
             costs.append((info["cap"] - size[l["id"]]) // 10 * v)
         model.add_exactly_one(choices)
 
-    # Hard: one lesson per room per hour
     for vs in room_use.values():
         model.add_at_most_one(vs)
 
@@ -140,9 +146,8 @@ def assign_rooms(lessons, rooms, size, times, time_limit, seed):
 def solve(data, time_limit=10, seed=None):
     rooms, groups, lessons = data["rooms"], data["groups"], data["lessons"]
     by_id = {l["id"]: l for l in lessons}
-    size = {l["id"]: groups[l["group"]] for l in lessons}
+    size = {l["id"]: class_size(l, groups) for l in lessons}
 
-    # Fail early if a lesson has no suitable room at all
     for l in lessons:
         if not any(_is_lab_room(i) == l["lab"] and i["cap"] >= size[l["id"]]
                    for i in rooms.values()):
@@ -157,7 +162,7 @@ def solve(data, time_limit=10, seed=None):
         entries.append({
             "lesson_id": lid,
             "module": l["module"],
-            "group": l["group"],
+            "groups": l["groups"],
             "lecturer": l["lecturer"],
             "room": assigned[lid],
             "day": d + 1,
@@ -166,7 +171,7 @@ def solve(data, time_limit=10, seed=None):
             "start_time": slot_time(s),
             "end_time": slot_time(s + l["hours"]),
         })
-    entries.sort(key=lambda e: (e["group"], e["day"], e["start_slot"]))
+    entries.sort(key=lambda e: (e["groups"][0], e["day"], e["start_slot"]))
 
     both_optimal = st1 == cp_model.OPTIMAL and st2 == cp_model.OPTIMAL
     return {

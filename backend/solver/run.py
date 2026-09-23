@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from solver.expand import expand
 
 from solver.engine import DAYS, SolverError, solve
 
@@ -14,7 +15,7 @@ def main():
     parser.add_argument("--time", type=float, default=10, help="time limit in seconds")
     args = parser.parse_args()
 
-    data = json.loads(args.file.read_text(encoding="utf-8"))
+    data = expand(json.loads(args.file.read_text(encoding="utf-8")))
 
     try:
         result = solve(data, time_limit=args.time)
@@ -26,9 +27,9 @@ def main():
 
     current = None
     for e in result["entries"]:
-        if e["group"] != current:
-            print(f"== {e['group']} ==")
-            current = e["group"]
+        if e["groups"][0] != current:
+            print(f"== {', '.join(e['groups'])} ==")
+            current = e["groups"][0]
         day = DAYS[e["day"] - 1]
         print(f"  {day} {e['start_time']}-{e['end_time']}  {e['module']:<18} {e['room']:<5} {e['lecturer']}")
 
