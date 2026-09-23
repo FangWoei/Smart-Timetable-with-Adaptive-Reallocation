@@ -21,22 +21,22 @@ export default function TimetablePage() {
       .getTimetable()
       .then((d) => {
         setData(d);
-        setGroup(d.entries[0]?.group ?? "");
+        setGroup(d.entries[0]?.groups?.[0] ?? "");
       })
       .catch((e) => setError(e.message));
   }, []);
 
   const groups = useMemo(
-    () => [...new Set((data?.entries ?? []).map((e) => e.group))].sort(),
+    () =>
+      [...new Set((data?.entries ?? []).flatMap((e) => e.groups ?? []))].sort(),
     [data],
   );
 
-  // Which class starts in each cell, and which cells are covered by a longer class
   const cells = useMemo(() => {
     const starts = {};
     const covered = new Set();
     for (const e of data?.entries ?? []) {
-      if (e.group !== group) continue;
+      if (!e.groups?.includes(group)) continue;
       starts[`${e.day}-${e.start_slot}`] = e;
       for (let s = e.start_slot + 1; s < e.start_slot + e.hours; s++) {
         covered.add(`${e.day}-${s}`);
@@ -61,7 +61,8 @@ export default function TimetablePage() {
           ))}
         </select>
         <span className="text-sm text-gray-500">
-          Run #{data.run.id} · penalty {data.run.penalty}
+          Run #{data.run.id} · penalty {data.run.penalty} ·{" "}
+          {data.entries.length} sessions
         </span>
       </div>
 
@@ -104,6 +105,12 @@ export default function TimetablePage() {
                       <div className="text-xs text-gray-500">
                         {e.start_time}–{e.end_time}
                       </div>
+                      {e.groups.length > 1 && (
+                        <div className="mt-1 text-xs text-gray-400">
+                          with {e.groups.length - 1} other group
+                          {e.groups.length > 2 ? "s" : ""}
+                        </div>
+                      )}
                     </td>
                   );
                 })}
