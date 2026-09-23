@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from solver.engine import SLOTS
+from solver.engine import SLOTS, class_size
 
 
 def check(data, entries):
@@ -10,7 +10,6 @@ def check(data, entries):
     lessons = {l["id"]: l for l in data["lessons"]}
     problems = []
 
-    # Every lesson must appear exactly once
     counts = defaultdict(int)
     for e in entries:
         counts[e["lesson_id"]] += 1
@@ -18,7 +17,8 @@ def check(data, entries):
         if counts[lid] != 1:
             problems.append(f"{lid} scheduled {counts[lid]} times")
 
-    busy = {}  # (kind, who, day, slot) -> lesson id already there
+    busy = {}
+    class_days = defaultdict(set)
     for e in entries:
         lid = e["lesson_id"]
         l = lessons.get(lid)
@@ -30,7 +30,7 @@ def check(data, entries):
             problems.append(f"{lid}: unknown room {e['room']}")
             continue
 
-        if room["cap"] < groups[l["group"]]:
+        if room["cap"] < class_size(l, groups):
             problems.append(f"{lid}: {e['room']} too small")
         if l["lab"] != (room["type"] == "lab"):
             problems.append(f"{lid}: wrong room type {e['room']}")
@@ -39,10 +39,15 @@ def check(data, entries):
         if start < 1 or start + l["hours"] - 1 > SLOTS:
             problems.append(f"{lid}: outside teaching hours")
 
+        cid = l.get("class_id", lid)
+        if e["day"] in class_days[cid]:
+            problems.append(f"{cid}: two sessions on day {e['day']}")
+        class_days[cid].add(e["day"])
+
         for t in range(start, start + l["hours"]):
-            for kind, who in (("room", e["room"]),
-                              ("lecturer", l["lecturer"]),
-                              ("group", l["group"])):
+            owners = [("room", e["room"]), ("lecturer", l["lecturer"])]
+            owners += [("group", g) for g in l["groups"]]
+            for kind, who in owners:
                 key = (kind, who, e["day"], t)
                 if key in busy:
                     problems.append(
