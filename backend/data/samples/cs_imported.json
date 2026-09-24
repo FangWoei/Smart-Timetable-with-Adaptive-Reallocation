@@ -1,0 +1,189 @@
+{
+  "rooms": {
+    "R1": {
+      "cap": 30,
+      "type": "lecture"
+    },
+    "R2": {
+      "cap": 30,
+      "type": "lecture"
+    },
+    "R3": {
+      "cap": 30,
+      "type": "lecture"
+    },
+    "R4": {
+      "cap": 30,
+      "type": "lecture"
+    },
+    "LAB1": {
+      "cap": 30,
+      "type": "lab"
+    },
+    "LAB2": {
+      "cap": 30,
+      "type": "lab"
+    }
+  },
+  "groups": {
+    "BSCS202506-L6": 3,
+    "BSCS202509-L6": 7,
+    "BSCS202509-L5": 2,
+    "BSSE202506-L6": 8,
+    "BSSE202509-L6": 4,
+    "BSAI202605-L5": 5,
+    "BSCS202609-L4": 5,
+    "BSSE202609-L4": 5,
+    "BSAI202609-L4": 5
+  },
+  "classes": [
+    {
+      "id": "MAL1012",
+      "module": "Software Engineering 1",
+      "groups": [
+        "BSCS202609-L4",
+        "BSSE202609-L4",
+        "BSAI202609-L4"
+      ],
+      "students": 18,
+      "lecturer": "Oh Ee Teik",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL1013",
+      "module": "Computer Systems",
+      "groups": [
+        "BSCS202609-L4",
+        "BSSE202609-L4",
+        "BSAI202609-L4"
+      ],
+      "students": 18,
+      "lecturer": "Oh Ee Teik",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL1016",
+      "module": "Computing Practice",
+      "groups": [
+        "BSCS202609-L4",
+        "BSSE202609-L4",
+        "BSAI202609-L4"
+      ],
+      "students": 15,
+      "lecturer": "Kong Kok Wah @ Eric",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL2017",
+      "module": "Software Engineering 2",
+      "groups": [
+        "BSCS202509-L5",
+        "BSAI202605-L5"
+      ],
+      "students": 12,
+      "lecturer": "Nikalus Swee Shu Luing",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL2018",
+      "module": "Information Management & Retrieval",
+      "groups": [
+        "BSCS202509-L5",
+        "BSAI202605-L5"
+      ],
+      "students": 12,
+      "lecturer": "Nikalus Swee Shu Luing",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL2020",
+      "module": "Computing Group Project 1",
+      "groups": [
+        "BSCS202509-L5",
+        "BSAI202605-L5"
+      ],
+      "students": 10,
+      "lecturer": "Kong Kok Wah @ Eric",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL3018",
+      "module": "Computing Project 1",
+      "groups": [
+        "BSCS202506-L6",
+        "BSCS202509-L6",
+        "BSSE202506-L6",
+        "BSSE202509-L6"
+      ],
+      "students": 20,
+      "lecturer": "Kong Kok Wah @ Eric",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL3020",
+      "module": "Full-Stack Development",
+      "groups": [
+        "BSSE202506-L6",
+        "BSSE202509-L6"
+      ],
+      "students": 12,
+      "lecturer": "Oh Ee Teik",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL3023",
+      "module": "Information Security Management and Governance",
+      "groups": [
+        "BSCS202506-L6",
+        "BSCS202509-L6"
+      ],
+      "students": 12,
+      "lecturer": "Nafisah Misriya Binti Shahul Hamid",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL3024",
+      "module": "Security Operations and Incident Management",
+      "groups": [
+        "BSCS202506-L6",
+        "BSCS202509-L6"
+      ],
+      "students": 12,
+      "lecturer": "Choong Hui Ping",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    },
+    {
+      "id": "MAL3063",
+      "module": "Computing Product Development, Management & Delivery",
+      "groups": [
+        "BSSE202506-L6",
+        "BSSE202509-L6"
+      ],
+      "students": 10,
+      "lecturer": "Nafisah Misriya Binti Shahul Hamid",
+      "weekly_hours": 4,
+      "session_length": 2,
+      "lab": false
+    }
+  ]
+}

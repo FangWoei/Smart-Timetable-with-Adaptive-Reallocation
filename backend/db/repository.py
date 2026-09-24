@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from supabase import create_client
+
 from solver.engine import slot_time
 
 
@@ -11,64 +12,90 @@ def get_client():
 
 
 def _id_map(sb, table, key):
-    """Return {code: id} for a table, e.g. {'R101': 1, 'R102': 2}."""
     rows = sb.table(table).select(f"id, {key}").execute().data
     return {r[key]: r["id"] for r in rows}
 
 
 # ---------- WRITE INPUT DATA ----------
 def seed(sb, data):
-    """Load solver-format data (like mock.json) into the input tables."""
-    rooms = [{"code": code, "capacity": r["cap"], "room_type": r["type"]}
-             for code, r in data["rooms"].items()]
+    """Load class-format data (like cs_sep2026.json) into the input tables."""
+    rooms = [{"code": c, "capacity": r["cap"], "room_type": r["type"]}
+             for c, r in data["rooms"].items()]
     sb.table("rooms").upsert(rooms, on_conflict="code").execute()
 
-    groups = [{"code": code, "student_count": n} for code, n in data["groups"].items()]
+    groups = [{"code": c, "student_count": n} for c, n in data["groups"].items()]
     sb.table("intake_groups").upsert(groups, on_conflict="code").execute()
 
-    names = sorted({l["lecturer"] for l in data["lessons"] if l.get("lecturer")})
-    lecturers = [{"name": n, "is_part_time": n.startswith("PT")} for n in names]
-    sb.table("lecturers").upsert(lecturers, on_conflict="name").execute()
+    names = sorted({c["lecturer"] for c in data["classes"] if c.get("lecturer")})
+    sb.table("lecturers").upsert(
+        [{"name": n, "is_part_time": n.startswith("PT")} for n in names],
+        on_conflict="name",
+    ).execute()
 
-    group_ids = _id_map(sb, "intake_groups", "code")
     lect_ids = _id_map(sb, "lecturers", "name")
-    lessons = [{
-        "code": l["id"],
-        "module_name": l["module"],
-        "group_id": group_ids[l["group"]],
-        "lecturer_id": lect_ids.get(l["lecturer"]),
-        "hours": l["hours"],
-        "needs_lab": l["lab"],
-    } for l in data["lessons"]]
-    sb.table("lessons").upsert(lessons, on_conflict="code").execute()
+    sb.table("classes").upsert([{
+        "code": c["id"],
+        "module_name": c["module"],
+        "lecturer_id": lect_ids.get(c["lecturer"]),
+        "weekly_hours": c.get("weekly_hours", 4),
+        "session_length": c.get("session_length", 2),
+        "students": c.get("students"),
+        "needs_lab": c.get("lab", False),
+    } for c in data["classes"]], on_conflict="code").execute()
+
+    class_ids = _id_map(sb, "classes", "code")
+    group_ids = _id_map(sb, "intake_groups", "code")
+
+    links = [{"class_id": class_ids[c["id"]], "group_id": group_ids[g]}
+             for c in data["classes"] for g in c["groups"]]
+    sb.table("class_groups").upsert(links, on_conflict="class_id,group_id").execute()
+
+    # Rebuild sessions from weekly_hours / session_length
+    rows = []
+    for c in data["classes"]:
+        total = c.get("weekly_hours", 4)
+        length = c.get("session_length", total)
+        n = 1
+        while total > 0:
+            take = min(length, total)
+            rows.append({"class_id": class_ids[c["id"]], "session_no": n, "hours": take})
+            total -= take
+            n += 1
+    sb.table("sessions").upsert(rows, on_conflict="class_id,session_no").execute()
 
 
 # ---------- READ INPUT FOR THE SOLVER ----------
 def load_input(sb):
-    """Read the input tables and return data in the solver's format."""
+    """Read the input tables and return data in the solver's session format."""
     rooms = {r["code"]: {"cap": r["capacity"], "type": r["room_type"]}
              for r in sb.table("rooms").select("code, capacity, room_type").execute().data}
 
     groups = {g["code"]: g["student_count"]
               for g in sb.table("intake_groups").select("code, student_count").execute().data}
 
-    rows = sb.table("lessons").select(
-        "code, module_name, hours, needs_lab, intake_groups(code), lecturers(name)"
+    classes = sb.table("classes").select(
+        "id, code, module_name, students, needs_lab, lecturers(name), "
+        "class_groups(intake_groups(code))"
     ).execute().data
+    by_class = {c["id"]: c for c in classes}
+
+    rows = sb.table("sessions").select("id, class_id, session_no, hours").execute().data
 
     lessons = []
-    for r in rows:
-        if r["lecturers"]:
-            lecturer = r["lecturers"]["name"]
-        else:
-            lecturer = f"UNASSIGNED {r['code']}"   # unique, so no false clashes
+    for s in rows:
+        c = by_class.get(s["class_id"])
+        if c is None:
+            continue
+        attending = [g["intake_groups"]["code"] for g in c["class_groups"]]
         lessons.append({
-            "id": r["code"],
-            "module": r["module_name"],
-            "group": r["intake_groups"]["code"],
-            "lecturer": lecturer,
-            "hours": r["hours"],
-            "lab": r["needs_lab"],
+            "id": str(s["id"]),                     # the session's database id
+            "class_id": c["code"],
+            "module": f"{c['module_name']} (part {s['session_no']})",
+            "groups": attending,
+            "students": c["students"],
+            "lecturer": c["lecturers"]["name"] if c["lecturers"] else f"UNASSIGNED {c['code']}",
+            "hours": s["hours"],
+            "lab": c["needs_lab"],
         })
 
     return {"rooms": rooms, "groups": groups, "lessons": lessons}
@@ -76,7 +103,6 @@ def load_input(sb):
 
 # ---------- SAVE SOLVER OUTPUT ----------
 def save_run(sb, result, engine, seconds, note=None):
-    """Store a solver result as a new active timetable run. Returns the run id."""
     sb.table("timetable_runs").update({"is_active": False}).eq("is_active", True).execute()
 
     run = sb.table("timetable_runs").insert({
@@ -88,23 +114,21 @@ def save_run(sb, result, engine, seconds, note=None):
         "note": note,
     }).execute().data[0]
 
-    lesson_ids = _id_map(sb, "lessons", "code")
     room_ids = _id_map(sb, "rooms", "code")
-    entries = [{
+    sb.table("timetable_entries").insert([{
         "run_id": run["id"],
-        "lesson_id": lesson_ids[e["lesson_id"]],
+        "session_id": int(e["lesson_id"]),
         "room_id": room_ids[e["room"]],
         "day_of_week": e["day"],
         "start_slot": e["start_slot"],
         "hours": e["hours"],
-    } for e in result["entries"]]
-    sb.table("timetable_entries").insert(entries).execute()
+    } for e in result["entries"]]).execute()
 
     return run["id"]
 
+
 # ---------- READ OUTPUT ----------
 def list_runs(sb):
-    """All timetable runs, newest first."""
     return (sb.table("timetable_runs")
               .select("id, status, penalty, engine, solve_seconds, is_active, note, created_at")
               .order("id", desc=True)
@@ -112,7 +136,6 @@ def list_runs(sb):
 
 
 def get_active_timetable(sb):
-    """The active run and its classes, or None if nothing is generated yet."""
     runs = (sb.table("timetable_runs")
               .select("id, status, penalty, engine, created_at")
               .eq("is_active", True)
@@ -121,21 +144,23 @@ def get_active_timetable(sb):
         return None
     run = runs[0]
 
-    rows = (sb.table("timetable_entries")
-              .select("day_of_week, start_slot, hours, rooms(code), "
-                      "lessons(code, module_name, intake_groups(code), lecturers(name))")
-              .eq("run_id", run["id"])
-              .execute().data)
+    rows = sb.table("timetable_entries").select(
+        "day_of_week, start_slot, hours, rooms(code), "
+        "sessions(session_no, classes(code, module_name, lecturers(name), "
+        "class_groups(intake_groups(code))))"
+    ).eq("run_id", run["id"]).execute().data
 
     entries = []
     for r in rows:
-        l = r["lessons"]
+        s = r["sessions"]
+        c = s["classes"]
         start = r["start_slot"] - 1
         entries.append({
-            "lesson_id": l["code"],
-            "module": l["module_name"],
-            "group": l["intake_groups"]["code"],
-            "lecturer": l["lecturers"]["name"] if l["lecturers"] else None,
+            "class_code": c["code"],
+            "session_no": s["session_no"],
+            "module": f"{c['module_name']} (part {s['session_no']})",
+            "groups": sorted(g["intake_groups"]["code"] for g in c["class_groups"]),
+            "lecturer": c["lecturers"]["name"] if c["lecturers"] else None,
             "room": r["rooms"]["code"],
             "day": r["day_of_week"],
             "start_slot": r["start_slot"],
@@ -143,5 +168,5 @@ def get_active_timetable(sb):
             "start_time": slot_time(start),
             "end_time": slot_time(start + r["hours"]),
         })
-    entries.sort(key=lambda e: (e["group"], e["day"], e["start_slot"]))
+    entries.sort(key=lambda e: (e["groups"][0], e["day"], e["start_slot"]))
     return {"run": run, "entries": entries}
