@@ -36,6 +36,7 @@ PyJWT==2.14.0
 pytest==9.1.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.3
+python-multipart==0.0.32
 PyYAML==6.0.3
 realtime==2.31.0
 six==1.17.0

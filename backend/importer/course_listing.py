@@ -1,10 +1,5 @@
-"""Read the ASc Course Listing CSV into the solver's class format.
-
-Student names (the columns after the header row) are never read.
-"""
 import csv
 import re
-from pathlib import Path
 
 # Column positions in the Course Listing export
 COL_GROUP = 2
@@ -65,7 +60,7 @@ def read_rows(path):
 
 
 def parse(path):
-    """Build {groups, classes} from the Course Listing CSV."""
+    """Build {groups, classes, skipped, warnings} from the Course Listing CSV."""
     groups = {}
     classes = {}
     skipped = []
@@ -78,6 +73,7 @@ def parse(path):
 
         module, suffix = clean_module(row[COL_NAME])
         lecturer = clean_lecturer(row[COL_LECTURER])
+
         try:
             group_students = int(row[COL_STUDENTS])
         except (ValueError, IndexError):
@@ -98,17 +94,17 @@ def parse(path):
             "lab": False,
             "part_time": row[COL_FTPT].strip().upper() == "PT" if len(row) > COL_FTPT else False,
         })
+
         if group not in c["groups"]:
             c["groups"].append(group)
+            c["students"] += suffix if suffix else group_students
+
         if suffix is None:
             warnings.append(f"{code} / {group}: module name has no (n) suffix, "
                             f"used STUDENT NO = {group_students}")
-        if not hours:
-            pass   # hours are missing for every row; reported once below
-            c["students"] += suffix if suffix else group_students
 
-        if all(c["weekly_hours"] == DEFAULT_WEEKLY_HOURS for c in classes.values()):
-            warnings.append(f"HOURS PER WEEK column is empty — "
+    if classes and all(c["weekly_hours"] == DEFAULT_WEEKLY_HOURS for c in classes.values()):
+        warnings.append(f"HOURS PER WEEK column is empty — "
                         f"defaulted every class to {DEFAULT_WEEKLY_HOURS}h")
 
     return {
