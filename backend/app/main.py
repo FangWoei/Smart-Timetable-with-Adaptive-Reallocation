@@ -63,7 +63,7 @@ def read_timetable(group: str | None = None, lecturer: str | None = None,
 
     entries = tt["entries"]
     if group:
-        entries = [e for e in entries if e["group"] == group]
+        entries = [e for e in entries if group in e["groups"]]
     if lecturer:
         entries = [e for e in entries if e["lecturer"] == lecturer]
     return {"run": tt["run"], "entries": entries}
