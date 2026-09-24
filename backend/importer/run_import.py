@@ -29,6 +29,11 @@ def main():
               f"{c['weekly_hours']}h  {c['lecturer']}{pt}")
         print(f"            groups: {', '.join(c['groups'])}")
 
+    if result["warnings"]:
+        print("\nWarnings (check with the coordinator):")
+        for w in result["warnings"]:
+            print(f"  ! {w}")
+
     if result["skipped"]:
         print("\nSkipped (not timetabled):")
         for group, code in result["skipped"]:
