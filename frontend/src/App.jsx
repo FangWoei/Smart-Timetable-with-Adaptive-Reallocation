@@ -1,42 +1,22 @@
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
-import GeneratePage from "./pages/GeneratePage";
-import TimetablePage from "./pages/TimetablePage";
-
-const links = [
-  { to: "/", label: "Timetable" },
-  { to: "/generate", label: "Generate" },
-];
+import { Route, Routes } from 'react-router-dom'
+import AppShell from './layouts/AppShell.jsx'
+import HomePage from './pages/Home/HomePage.jsx'
+import GroupViewPage from './pages/GroupView/GroupViewPage.jsx'
+import StudentViewPage from './pages/StudentView/StudentViewPage.jsx'
+import ManagePeoplePage from './pages/ManagePeople/ManagePeoplePage.jsx'
+import ImportDataPage from './pages/ImportData/ImportDataPage.jsx'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="flex min-h-screen bg-gray-50 text-gray-900">
-        <aside className="w-56 shrink-0 border-r border-gray-200 bg-white p-4">
-          <h1 className="mb-6 text-xl font-bold">STAR</h1>
-          <nav className="flex flex-col gap-1">
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end
-                className={({ isActive }) =>
-                  `rounded px-3 py-2 text-sm ${
-                    isActive ? "bg-gray-900 text-white" : "hover:bg-gray-100"
-                  }`
-                }>
-                {l.label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-
-        <main className="flex-1 p-6">
-          <Routes>
-            <Route path="/" element={<TimetablePage />} />
-            <Route path="/generate" element={<GeneratePage />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
-  );
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<HomePage />} />
+        <Route path="group-view" element={<GroupViewPage />} />
+        <Route path="students" element={<StudentViewPage />} />
+        <Route path="people" element={<ManagePeoplePage />} />
+        <Route path="import" element={<ImportDataPage />} />
+        <Route path="*" element={<div className="p-8 text-ink-3">Page not found</div>} />
+      </Route>
+    </Routes>
+  )
 }
