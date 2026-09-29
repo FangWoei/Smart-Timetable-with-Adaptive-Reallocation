@@ -1,16 +1,16 @@
-import { DAYS, PERIODS, TONES } from '../data/timetable.js'
+import { DAYS, PERIODS, TONES } from "../data/timetable.js";
 
-const LABEL_W = 104
-const COLS = DAYS.length * PERIODS.length // 25 period columns
+const LABEL_W = 104;
+const COLS = DAYS.length * PERIODS.length; // 25 period columns
 
 // Lesson -> 1-based CSS grid column (col 1 is the row label)
-const startCol = (day, period) => day * PERIODS.length + (period - 1) + 2
+const startCol = (day, period) => day * PERIODS.length + (period - 1) + 2;
 
 function Lesson({ lesson, column }) {
-  const t = TONES[lesson.tone]
-  const { conflict, retake } = lesson
-  const narrow = lesson.span === 1
-  const label = `${lesson.code}, ${lesson.room}${lesson.lecturer ? `, ${lesson.lecturer}` : ''}${conflict ? ', conflict' : ''}`
+  const t = TONES[lesson.tone];
+  const { conflict } = lesson;
+  const narrow = lesson.span === 1;
+  const label = `${lesson.code}, ${lesson.room}${lesson.lecturer ? `, ${lesson.lecturer}` : ""}${conflict ? ", conflict" : ""}`;
 
   return (
     <button
@@ -20,38 +20,48 @@ function Lesson({ lesson, column }) {
       style={{
         gridColumn: `${column} / span ${lesson.span}`,
         gridRow: 1,
-        background: conflict ? '#FBE2E6' : t.bg,
+        background: conflict ? "#FBE2E6" : t.bg,
       }}
       className={[
-        'relative z-10 m-[2px] overflow-hidden rounded-[2px] px-0.5 pt-1.5 text-center leading-tight',
-        conflict ? 'outline outline-2 -outline-offset-2 outline-danger' : '',
-      ].join(' ')}
-    >
-      {!conflict && <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: t.bar }} />}
+        "relative z-10 m-[2px] overflow-hidden rounded-[2px] px-0.5 pt-1.5 text-center leading-tight",
+        conflict ? "outline outline-2 -outline-offset-2 outline-danger" : "",
+      ].join(" ")}>
+      {!conflict && (
+        <span
+          className="absolute inset-x-0 top-0 h-[3px]"
+          style={{ background: t.bar }}
+        />
+      )}
       {conflict && (
         <span
           className="absolute right-0 top-0 size-1.5 bg-danger"
-          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+          style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
         />
       )}
-      <span className="block text-[11px] font-bold" style={{ color: conflict ? '#C8102E' : t.code }}>
+      <span
+        className="block text-[11px] font-bold"
+        style={{ color: conflict ? "#C8102E" : t.code }}>
         {lesson.code}
       </span>
-      <span className="block text-[10px]" style={{ color: conflict ? '#A4505E' : t.sub }}>
+      <span
+        className="block text-[10px]"
+        style={{ color: conflict ? "#A4505E" : t.sub }}>
         {lesson.room}
       </span>
       {!narrow && lesson.lecturer && (
-        <span className="block text-[10px]" style={{ color: conflict ? '#B96A76' : t.sub2 }}>
+        <span
+          className="block text-[10px]"
+          style={{ color: conflict ? "#B96A76" : t.sub2 }}>
           {lesson.lecturer}
         </span>
       )}
     </button>
-  )
+  );
 }
 
 export default function TimetableGrid({ groups, selectedId, onSelect, zoom }) {
-  const cell = Math.round(26 * (zoom / 100))
-  const template = `${LABEL_W}px repeat(${COLS}, minmax(${cell}px, 1fr))`
+  const cell = Math.round(26 * (zoom / 100));
+  const template = `${LABEL_W}px repeat(${COLS}, minmax(${cell}px, 1fr))`;
 
   return (
     <div className="overflow-auto rounded-md border border-line bg-white">
@@ -59,46 +69,52 @@ export default function TimetableGrid({ groups, selectedId, onSelect, zoom }) {
         {/* Day headers */}
         <div
           className="grid border-b border-line-2 bg-[#E8EDF4] text-xs font-semibold text-ink-2"
-          style={{ gridTemplateColumns: `${LABEL_W}px repeat(${DAYS.length}, minmax(0, 1fr))` }}
-        >
+          style={{
+            gridTemplateColumns: `${LABEL_W}px repeat(${DAYS.length}, minmax(0, 1fr))`,
+          }}>
           <div />
           {DAYS.map((d) => (
-            <div key={d} className="border-l border-line-strong py-1.5 text-center">{d}</div>
+            <div
+              key={d}
+              className="border-l border-line-strong py-1.5 text-center">
+              {d}
+            </div>
           ))}
         </div>
 
         {/* Period headers */}
-        <div className="grid bg-panel text-[10px] text-ink-4" style={{ gridTemplateColumns: template }}>
+        <div
+          className="grid bg-panel text-[10px] text-ink-4"
+          style={{ gridTemplateColumns: template }}>
           <div />
           {Array.from({ length: COLS }, (_, i) => (
             <div
               key={i}
-              className={`py-[3px] text-center ${i % 5 === 0 ? 'border-l border-line-strong' : ''}`}
-            >
-              {(i % 5) + 1}
+              className={`py-[3px] text-center ${i % PERIODS.length === 0 ? "border-l border-line-strong" : ""}`}>
+              {(i % PERIODS.length) + 1}
             </div>
           ))}
         </div>
 
         {/* Group rows */}
         {groups.map((g) => {
-          const active = g.id === selectedId
+          const active = g.id === selectedId;
           return (
             <div
               key={g.id}
               className="grid h-12 border-t border-line-2"
-              style={{ gridTemplateColumns: template }}
-            >
+              style={{ gridTemplateColumns: template }}>
               <button
                 type="button"
                 onClick={() => onSelect(g.id)}
-                aria-current={active ? 'true' : undefined}
+                aria-current={active ? "true" : undefined}
                 style={{ gridColumn: 1, gridRow: 1 }}
                 className={[
-                  'px-3 text-left text-xs',
-                  active ? 'bg-navy-50 font-semibold text-navy-700' : 'bg-[#FAFBFD] text-ink hover:bg-navy-50/60',
-                ].join(' ')}
-              >
+                  "px-3 text-left text-xs",
+                  active
+                    ? "bg-navy-50 font-semibold text-navy-700"
+                    : "bg-[#FAFBFD] text-ink hover:bg-navy-50/60",
+                ].join(" ")}>
                 {g.id}
               </button>
 
@@ -107,7 +123,7 @@ export default function TimetableGrid({ groups, selectedId, onSelect, zoom }) {
                 <div
                   key={i}
                   style={{ gridColumn: i + 2, gridRow: 1 }}
-                  className={`border-l ${i % 5 === 0 ? 'border-line-strong' : 'border-line-2'}`}
+                  className={`border-l ${i % 5 === 0 ? "border-line-strong" : "border-line-2"}`}
                 />
               ))}
 
@@ -115,7 +131,10 @@ export default function TimetableGrid({ groups, selectedId, onSelect, zoom }) {
                 <div
                   key={i}
                   aria-label="Free slot"
-                  style={{ gridColumn: `${startCol(s.day, s.period)} / span ${s.span}`, gridRow: 1 }}
+                  style={{
+                    gridColumn: `${startCol(s.day, s.period)} / span ${s.span}`,
+                    gridRow: 1,
+                  }}
                   className="z-10 m-[2px] rounded-[2px] border border-dashed border-ok bg-[#E4F1EA]"
                 />
               ))}
@@ -124,9 +143,9 @@ export default function TimetableGrid({ groups, selectedId, onSelect, zoom }) {
                 <Lesson key={i} lesson={l} column={startCol(l.day, l.period)} />
               ))}
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

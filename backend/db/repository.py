@@ -170,3 +170,9 @@ def get_active_timetable(sb):
         })
     entries.sort(key=lambda e: (e["groups"][0], e["day"], e["start_slot"]))
     return {"run": run, "entries": entries}
+
+def list_groups(sb):
+    return (sb.table("intake_groups")
+              .select("code, student_count, programme, intake")
+              .order("code")
+              .execute().data)
