@@ -15,7 +15,7 @@ from db.calendar import (
 from db.repository import (
     get_active_timetable, get_client, list_groups, list_runs, load_input, save_run, seed,
 )
-from importer.course_listing import parse
+from importer.reader import parse_any as parse
 from importer.run_import import PLACEHOLDER_ROOMS
 from solver import engine as engine_v1
 from solver import engine_v2
