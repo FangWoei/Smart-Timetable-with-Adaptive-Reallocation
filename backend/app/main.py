@@ -8,6 +8,10 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from db.calendar import (
+    add_holiday, delete_holiday, list_holidays, list_semesters,
+    save_semester, sync_holidays,
+)
 from db.repository import (
     get_active_timetable, get_client, list_runs, load_input, save_run, seed,
 )
@@ -20,6 +24,19 @@ from solver.engine import SolverError
 
 ENGINES = {"engine": engine_v1, "engine_v2": engine_v2}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024        # 2 MB is plenty for a course listing
+
+class HolidayIn(BaseModel):
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    name: str = Field(min_length=1, max_length=120)
+    is_teaching_day: bool = False
+    note: str | None = Field(default=None, max_length=300)
+
+
+class SemesterIn(BaseModel):
+    code: str = Field(min_length=1, max_length=20)
+    name: str = Field(min_length=1, max_length=60)
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 app = FastAPI(
     title="STAR API",
@@ -177,3 +194,38 @@ async def import_commit(file: UploadFile = File(...), sb=Depends(get_sb)):
         "classes": len(result["classes"]),
         "warnings": result.get("warnings", []),
     }
+
+@app.post("/holidays/sync")
+def sync(year: int, state: str = "PNG", sb=Depends(get_sb)):
+    if not 2020 <= year <= 2100:
+        raise HTTPException(400, "year out of range")
+    try:
+        return sync_holidays(sb, year, state)
+    except Exception as e:
+        raise HTTPException(500, f"Could not generate holidays: {e}")
+
+@app.get("/holidays")
+def read_holidays(start: str | None = None, end: str | None = None, sb=Depends(get_sb)):
+    return list_holidays(sb, start, end)
+
+
+@app.post("/holidays", status_code=201)
+def create_holiday(h: HolidayIn, sb=Depends(get_sb)):
+    return add_holiday(sb, h.date, h.name, h.is_teaching_day, h.note)
+
+
+@app.delete("/holidays/{date}", status_code=204)
+def remove_holiday(date: str, sb=Depends(get_sb)):
+    delete_holiday(sb, date)
+
+
+@app.get("/semesters")
+def read_semesters(sb=Depends(get_sb)):
+    return list_semesters(sb)
+
+
+@app.post("/semesters", status_code=201)
+def create_semester(s: SemesterIn, sb=Depends(get_sb)):
+    if s.end_date <= s.start_date:
+        raise HTTPException(400, "end_date must be after start_date")
+    return save_semester(sb, s.code, s.name, s.start_date, s.end_date)
