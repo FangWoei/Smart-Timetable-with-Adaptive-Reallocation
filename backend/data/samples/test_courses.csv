@@ -1,0 +1,24 @@
+course_code,course_name,faculty,lecturer,intake_group,student_count,hours_per_week,room_type
+CS101,Programming Fundamentals,Computer Science,Dr. Aisha Rahman,CS Year 1 A,35,3,Lab
+CS102,Database Systems,Computer Science,Mr. Daniel Lim,CS Year 1 A,35,3,Lab
+CS201,Data Structures and Algorithms,Computer Science,Dr. Aisha Rahman,CS Year 2 A,32,3,Lab
+CS202,Cybersecurity Fundamentals,Computer Science,Ms. Nurul Huda,CS Year 2 A,32,3,Lab
+CS203,Web Application Development,Computer Science,Mr. Daniel Lim,CS Year 2 A,32,3,Lab
+IT101,Computer Networks,Information Technology,Mr. Kelvin Tan,IT Year 1 A,30,3,Lab
+IT202,Cloud Computing,Information Technology,Ms. Nurul Huda,IT Year 2 A,28,3,Lab
+IT203,IT Project Management,Information Technology,Ms. Farah Aziz,IT Year 2 A,28,2,Lecture
+BA101,Principles of Management,Business Administration,Ms. Farah Aziz,BA Year 1 A,45,3,Lecture
+BA102,Marketing Fundamentals,Business Administration,Mr. Jason Wong,BA Year 1 A,45,3,Lecture
+BA201,Business Communication,Business Administration,Ms. Farah Aziz,BA Year 2 A,38,2,Lecture
+BA202,Entrepreneurship,Business Administration,Mr. Jason Wong,BA Year 2 A,38,3,Lecture
+ACC101,Financial Accounting,Accounting,Mr. Ravi Kumar,ACC Year 1 A,40,3,Lecture
+ACC102,Management Accounting,Accounting,Ms. Mei Ling,ACC Year 1 A,40,3,Lecture
+ACC201,Taxation,Accounting,Mr. Ravi Kumar,ACC Year 2 A,34,3,Lecture
+ENG101,Engineering Mathematics,Engineering,Dr. Siti Aminah,ENG Year 1 A,36,3,Lecture
+ENG102,Circuit Analysis,Engineering,Mr. Hafiz Ismail,ENG Year 1 A,36,3,Lab
+ENG201,Digital Systems,Engineering,Mr. Hafiz Ismail,ENG Year 2 A,30,3,Lab
+GEN101,Academic English,General Studies,Dr. Siti Aminah,Mixed Year 1,60,2,Lecture
+GEN102,Ethics and Professional Studies,General Studies,Ms. Mei Ling,Mixed Year 2,55,2,Lecture
+DS101,Statistics for Data Analysis,Data Science,Dr. Siti Aminah,DS Year 1 A,30,3,Lecture
+DS201,Introduction to Machine Learning,Data Science,Dr. Aisha Rahman,DS Year 2 A,26,3,Lab
+DS301,Introduction to Machine Learning,Data Science,Dr. Aisha Rahman,DS Year 3 A,10,3,Lab

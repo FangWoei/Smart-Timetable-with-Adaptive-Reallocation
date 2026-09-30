@@ -1,18 +1,20 @@
 import argparse
 import json
 from pathlib import Path
-
+from importer.reader import parse_any
 from importer.course_listing import parse
 
 PLACEHOLDER_ROOMS = {
-    "R1": {"cap": 30, "type": "lecture"},
-    "R2": {"cap": 30, "type": "lecture"},
-    "R3": {"cap": 30, "type": "lecture"},
-    "R4": {"cap": 30, "type": "lecture"},
-    "LAB1": {"cap": 30, "type": "lab"},
-    "LAB2": {"cap": 30, "type": "lab"},
+    "HALL1": {"cap": 80, "type": "lecture"},
+    "HALL2": {"cap": 80, "type": "lecture"},
+    "R1": {"cap": 50, "type": "lecture"},
+    "R2": {"cap": 50, "type": "lecture"},
+    "R3": {"cap": 40, "type": "lecture"},
+    "R4": {"cap": 40, "type": "lecture"},
+    "LAB1": {"cap": 40, "type": "lab"},
+    "LAB2": {"cap": 40, "type": "lab"},
+    "LAB3": {"cap": 36, "type": "lab"},
 }
-
 
 def main():
     p = argparse.ArgumentParser(description="Import a Course Listing CSV")
@@ -20,7 +22,7 @@ def main():
     p.add_argument("--out", type=Path, help="write solver JSON here")
     args = p.parse_args()
 
-    result = parse(args.csv)
+    result = parse_any(args.csv)
 
     print(f"{len(result['groups'])} intake groups, {len(result['classes'])} classes\n")
     for c in result["classes"]:

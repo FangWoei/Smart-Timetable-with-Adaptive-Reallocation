@@ -1,5 +1,5 @@
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-export const PERIODS = [1, 2, 3, 4, 5]
+export const PERIODS = Array.from({ length: 10 }, (_, i) => i + 1)
 
 // Lesson colours by subject family (from the design reference).
 export const TONES = {

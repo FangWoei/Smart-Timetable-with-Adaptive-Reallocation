@@ -1,25 +1,105 @@
-// src/pages/GroupView/GroupViewPage.jsx
-import { useState } from 'react'
-import Toolbar from './Toolbar.jsx'
-import Sidebar from './Sidebar.jsx'
-import TimetableGrid from '../../components/TimetableGrid.jsx'
-import LessonDetailsPanel from './LessonDetailsPanel.jsx'
-import BottomPanels from './BottomPanels.jsx' // 引入新面板
-import { GROUPS } from '../../data/timetable.js'
+import { useCallback, useEffect, useState } from "react";
+import { api, toGridGroups } from "../../api";
+import BottomPanels from './BottomPanels.jsx';
+import LessonDetailsPanel from './LessonDetailsPanel.jsx';
+import Sidebar from "./Sidebar.jsx";
+import TimetableGrid from "../../components/TimetableGrid.jsx";
+import Toolbar from "./Toolbar.jsx";
 
 export default function GroupViewPage() {
-  const [view, setView] = useState('group')
-  const [selectedId, setSelectedId] = useState(GROUPS[0].id)
-  const [zoom, setZoom] = useState(100)
-  
-  const [selectedLessonData, setSelectedLessonData] = useState(null)
+  const [view, setView] = useState("group");
+  const [groups, setGroups] = useState([]);
+  const [run, setRun] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [zoom, setZoom] = useState(100);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [selectedLessonData, setSelectedLessonData] = useState(null);
 
-  const conflicts = GROUPS.reduce((n, g) => n + g.lessons.filter((l) => l.conflict).length, 0)
-  const placedLessonsCount = 42; // 模拟数据
+  const load = useCallback(async () => {
+    try {
+      const [timetable, meta] = await Promise.all([
+        api.getTimetable(),
+        api.getGroups(),
+      ]);
+      const counts = Object.fromEntries(
+        meta.map((g) => [g.code, g.student_count]),
+      );
+      const rows = toGridGroups(timetable, counts);
+      setError("");
+      setGroups(rows);
+      setRun(timetable.run);
+      setSelectedId((id) => id ?? rows[0]?.id ?? null);
+    } catch (e) {
+      setError(e.message);
+      setGroups([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+  
+  async function handleGenerate() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await api.generate();
+      setMessage(
+        `Run #${r.run_id} · ${r.status} · penalty ${r.penalty} · ${r.seconds}s`,
+      );
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleVerify() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const entries = groups.flatMap((g) =>
+        g.lessons.map((l) => ({
+          lesson_id: l.code,
+          room: l.room,
+          day: l.day + 1,
+          start_slot: l.period,
+        })),
+      );
+      const seen = new Set();
+      const unique = entries.filter((e) =>
+        seen.has(e.lesson_id) ? false : seen.add(e.lesson_id),
+      );
+      const r = await api.check(unique);
+      setMessage(
+        r.valid
+          ? "No conflicts found."
+          : `${r.problems.length} problems: ${r.problems[0]}`,
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const sessions = new Set(
+    groups.flatMap((g) =>
+      g.lessons.map((l) => `${l.code}-${l.day}-${l.period}`),
+    ),
+  ).size;
+
+  const conflicts = groups.reduce((n, g) => n + g.lessons.filter((l) => l.conflict).length, 0);
+  const placedLessonsCount = 42; 
   const totalLessonsCount = 45;
 
   const selectedGroup = selectedLessonData 
-    ? GROUPS.find(g => g.id === selectedLessonData.groupId) 
+    ? groups.find(g => g.id === selectedLessonData.groupId) 
     : null;
 
   return (
@@ -27,27 +107,35 @@ export default function GroupViewPage() {
       <Toolbar
         view={view}
         onViewChange={setView}
-        onGenerate={() => {}}
-        onVerify={() => {}}
+        onGenerate={handleGenerate}
+        onVerify={handleVerify}
         onApprove={() => {}}
         canApprove={conflicts === 0}
       />
 
-      {/* 主体容器，减去底部状态栏的高度 */}
-      <div className="flex min-h-0 flex-1 overflow-hidden pb-8"> 
-        <Sidebar groups={GROUPS} selectedId={selectedId} onSelect={setSelectedId} />
+      <div className="flex min-h-0 flex-1 overflow-hidden pb-8">
+        <Sidebar
+          groups={groups}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
 
-        {/* 中间主要区域：表头 + 可滚动的(网格 + 底部面板) */}
         <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
-          
-          {/* 固定在顶部的控制栏 */}
           <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
-            <h1 className="text-[15px] font-semibold text-ink">January 2026 — all groups</h1>
-            <p className="text-xs text-ink-3">5 days · periods 1–5 · 08:00 to 17:00</p>
-            {conflicts > 0 && (
-              <p className="text-xs font-medium text-danger">
-                {conflicts} conflicts to resolve before approval
+            <h1 className="text-[15px] font-semibold text-ink">
+              {groups.length} groups · {sessions} sessions
+            </h1>
+            {run && (
+              <p className="text-xs text-ink-3">
+                Run #{run.id} · {run.status} · penalty {run.penalty}
               </p>
+            )}
+            {busy && <p className="text-xs text-ink-3">Working…</p>}
+            {message && (
+              <p className="text-xs font-medium text-navy-700">{message}</p>
+            )}
+            {error && (
+              <p className="text-xs font-medium text-danger">{error}</p>
             )}
 
             <div className="ml-auto flex items-center rounded border border-line bg-white text-[13px] text-ink-2">
@@ -55,37 +143,43 @@ export default function GroupViewPage() {
                 type="button"
                 aria-label="Zoom out"
                 onClick={() => setZoom((z) => Math.max(70, z - 10))}
-                className="px-2.5 py-0.5 hover:bg-panel"
-              >
+                className="px-2.5 py-0.5 hover:bg-panel">
                 −
               </button>
-              <span className="w-11 text-center text-[11px] text-ink-3">{zoom}%</span>
+              <span className="w-11 text-center text-[11px] text-ink-3">
+                {zoom}%
+              </span>
               <button
                 type="button"
                 aria-label="Zoom in"
                 onClick={() => setZoom((z) => Math.min(160, z + 10))}
-                className="px-2.5 py-0.5 hover:bg-panel"
-              >
+                className="px-2.5 py-0.5 hover:bg-panel">
                 +
               </button>
             </div>
           </div>
 
-          {/* 可滚动的区域包含网格和下方面板 */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">
-             <TimetableGrid 
-               groups={GROUPS} 
-               selectedId={selectedId} 
-               onSelect={setSelectedId} 
-               zoom={zoom} 
-               selectedLesson={selectedLessonData}
-               onLessonSelect={setSelectedLessonData}
-             />
-             <BottomPanels />
+            {groups.length === 0 && !error ? (
+              <p className="p-8 text-center text-sm text-ink-4">
+                No timetable yet — import a course listing, then click Generate.
+              </p>
+            ) : (
+              <>
+                <TimetableGrid
+                  groups={groups}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  zoom={zoom}
+                  selectedLesson={selectedLessonData}
+                  onLessonSelect={setSelectedLessonData}
+                />
+                <BottomPanels />
+              </>
+            )}
           </div>
         </main>
-        
-        {/* 右侧边栏 */}
+
         {selectedLessonData && selectedGroup && (
           <LessonDetailsPanel 
             lesson={selectedLessonData.lesson} 
@@ -95,13 +189,12 @@ export default function GroupViewPage() {
         )}
       </div>
 
-      {/* 底部固定状态栏 */}
       <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-[#E8EDF4] px-4 text-[11px] text-ink-3 z-20">
         <div className="flex items-center gap-4">
           <span className="text-ink">{placedLessonsCount} of {totalLessonsCount} lessons placed</span>
           <span className="flex items-center gap-1.5 font-medium text-danger">
             <span className="size-1.5 rounded-full bg-danger"></span>
-            2 hard conflicts
+            {conflicts} conflicts
           </span>
           <span className="flex items-center gap-1.5 font-medium text-warn">
             <span className="size-1.5 rounded-full bg-warn"></span>
@@ -112,9 +205,9 @@ export default function GroupViewPage() {
            <span>Last generated 09:42 · 4.2s · 31 constraints checked</span>
         </div>
         <div className="font-medium">
-           Draft not approved
+            Draft not approved
         </div>
       </footer>
     </div>
-  )
+  );
 }

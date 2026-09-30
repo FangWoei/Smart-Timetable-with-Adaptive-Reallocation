@@ -6,6 +6,7 @@ import StudentViewPage from './pages/StudentView/StudentViewPage.jsx'
 import ManagePeoplePage from './pages/ManagePeople/ManagePeoplePage.jsx'
 import ImportDataPage from './pages/ImportData/ImportDataPage.jsx'
 
+
 export default function App() {
   return (
     <Routes>

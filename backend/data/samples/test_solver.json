@@ -1,0 +1,358 @@
+{
+  "rooms": {
+    "HALL1": {
+      "cap": 80,
+      "type": "lecture"
+    },
+    "HALL2": {
+      "cap": 80,
+      "type": "lecture"
+    },
+    "R1": {
+      "cap": 50,
+      "type": "lecture"
+    },
+    "R2": {
+      "cap": 50,
+      "type": "lecture"
+    },
+    "R3": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "R4": {
+      "cap": 40,
+      "type": "lecture"
+    },
+    "LAB1": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB2": {
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB3": {
+      "cap": 36,
+      "type": "lab"
+    }
+  },
+  "groups": {
+    "CS Year 1 A": 35,
+    "CS Year 2 A": 32,
+    "IT Year 1 A": 30,
+    "IT Year 2 A": 28,
+    "BA Year 1 A": 45,
+    "BA Year 2 A": 38,
+    "ACC Year 1 A": 40,
+    "ACC Year 2 A": 34,
+    "ENG Year 1 A": 36,
+    "ENG Year 2 A": 30,
+    "Mixed Year 1": 60,
+    "Mixed Year 2": 55,
+    "DS Year 1 A": 30,
+    "DS Year 2 A": 26,
+    "DS Year 3 A": 10
+  },
+  "classes": [
+    {
+      "id": "ACC101",
+      "module": "Financial Accounting",
+      "groups": [
+        "ACC Year 1 A"
+      ],
+      "students": 40,
+      "lecturer": "Mr. Ravi Kumar",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Accounting"
+    },
+    {
+      "id": "ACC102",
+      "module": "Management Accounting",
+      "groups": [
+        "ACC Year 1 A"
+      ],
+      "students": 40,
+      "lecturer": "Ms. Mei Ling",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Accounting"
+    },
+    {
+      "id": "ACC201",
+      "module": "Taxation",
+      "groups": [
+        "ACC Year 2 A"
+      ],
+      "students": 34,
+      "lecturer": "Mr. Ravi Kumar",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Accounting"
+    },
+    {
+      "id": "BA101",
+      "module": "Principles of Management",
+      "groups": [
+        "BA Year 1 A"
+      ],
+      "students": 45,
+      "lecturer": "Ms. Farah Aziz",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Business Administration"
+    },
+    {
+      "id": "BA102",
+      "module": "Marketing Fundamentals",
+      "groups": [
+        "BA Year 1 A"
+      ],
+      "students": 45,
+      "lecturer": "Mr. Jason Wong",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Business Administration"
+    },
+    {
+      "id": "BA201",
+      "module": "Business Communication",
+      "groups": [
+        "BA Year 2 A"
+      ],
+      "students": 38,
+      "lecturer": "Ms. Farah Aziz",
+      "weekly_hours": 2,
+      "session_length": 2,
+      "lab": false,
+      "faculty": "Business Administration"
+    },
+    {
+      "id": "BA202",
+      "module": "Entrepreneurship",
+      "groups": [
+        "BA Year 2 A"
+      ],
+      "students": 38,
+      "lecturer": "Mr. Jason Wong",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Business Administration"
+    },
+    {
+      "id": "CS101",
+      "module": "Programming Fundamentals",
+      "groups": [
+        "CS Year 1 A"
+      ],
+      "students": 35,
+      "lecturer": "Dr. Aisha Rahman",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Computer Science"
+    },
+    {
+      "id": "CS102",
+      "module": "Database Systems",
+      "groups": [
+        "CS Year 1 A"
+      ],
+      "students": 35,
+      "lecturer": "Mr. Daniel Lim",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Computer Science"
+    },
+    {
+      "id": "CS201",
+      "module": "Data Structures and Algorithms",
+      "groups": [
+        "CS Year 2 A"
+      ],
+      "students": 32,
+      "lecturer": "Dr. Aisha Rahman",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Computer Science"
+    },
+    {
+      "id": "CS202",
+      "module": "Cybersecurity Fundamentals",
+      "groups": [
+        "CS Year 2 A"
+      ],
+      "students": 32,
+      "lecturer": "Ms. Nurul Huda",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Computer Science"
+    },
+    {
+      "id": "CS203",
+      "module": "Web Application Development",
+      "groups": [
+        "CS Year 2 A"
+      ],
+      "students": 32,
+      "lecturer": "Mr. Daniel Lim",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Computer Science"
+    },
+    {
+      "id": "DS101",
+      "module": "Statistics for Data Analysis",
+      "groups": [
+        "DS Year 1 A"
+      ],
+      "students": 30,
+      "lecturer": "Dr. Siti Aminah",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Data Science"
+    },
+    {
+      "id": "DS201",
+      "module": "Introduction to Machine Learning",
+      "groups": [
+        "DS Year 2 A"
+      ],
+      "students": 26,
+      "lecturer": "Dr. Aisha Rahman",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Data Science"
+    },
+    {
+      "id": "DS301",
+      "module": "Introduction to Machine Learning",
+      "groups": [
+        "DS Year 3 A"
+      ],
+      "students": 10,
+      "lecturer": "Dr. Aisha Rahman",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Data Science"
+    },
+    {
+      "id": "ENG101",
+      "module": "Engineering Mathematics",
+      "groups": [
+        "ENG Year 1 A"
+      ],
+      "students": 36,
+      "lecturer": "Dr. Siti Aminah",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": false,
+      "faculty": "Engineering"
+    },
+    {
+      "id": "ENG102",
+      "module": "Circuit Analysis",
+      "groups": [
+        "ENG Year 1 A"
+      ],
+      "students": 36,
+      "lecturer": "Mr. Hafiz Ismail",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Engineering"
+    },
+    {
+      "id": "ENG201",
+      "module": "Digital Systems",
+      "groups": [
+        "ENG Year 2 A"
+      ],
+      "students": 30,
+      "lecturer": "Mr. Hafiz Ismail",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Engineering"
+    },
+    {
+      "id": "GEN101",
+      "module": "Academic English",
+      "groups": [
+        "Mixed Year 1"
+      ],
+      "students": 60,
+      "lecturer": "Dr. Siti Aminah",
+      "weekly_hours": 2,
+      "session_length": 2,
+      "lab": false,
+      "faculty": "General Studies"
+    },
+    {
+      "id": "GEN102",
+      "module": "Ethics and Professional Studies",
+      "groups": [
+        "Mixed Year 2"
+      ],
+      "students": 55,
+      "lecturer": "Ms. Mei Ling",
+      "weekly_hours": 2,
+      "session_length": 2,
+      "lab": false,
+      "faculty": "General Studies"
+    },
+    {
+      "id": "IT101",
+      "module": "Computer Networks",
+      "groups": [
+        "IT Year 1 A"
+      ],
+      "students": 30,
+      "lecturer": "Mr. Kelvin Tan",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Information Technology"
+    },
+    {
+      "id": "IT202",
+      "module": "Cloud Computing",
+      "groups": [
+        "IT Year 2 A"
+      ],
+      "students": 28,
+      "lecturer": "Ms. Nurul Huda",
+      "weekly_hours": 3,
+      "session_length": 3,
+      "lab": true,
+      "faculty": "Information Technology"
+    },
+    {
+      "id": "IT203",
+      "module": "IT Project Management",
+      "groups": [
+        "IT Year 2 A"
+      ],
+      "students": 28,
+      "lecturer": "Ms. Farah Aziz",
+      "weekly_hours": 2,
+      "session_length": 2,
+      "lab": false,
+      "faculty": "Information Technology"
+    }
+  ]
+}

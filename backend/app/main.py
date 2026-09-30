@@ -13,9 +13,9 @@ from db.calendar import (
     save_semester, sync_holidays,
 )
 from db.repository import (
-    get_active_timetable, get_client, list_runs, load_input, save_run, seed,
+    get_active_timetable, get_client, list_groups, list_runs, load_input, save_run, seed,
 )
-from importer.course_listing import parse
+from importer.reader import parse_any as parse
 from importer.run_import import PLACEHOLDER_ROOMS
 from solver import engine as engine_v1
 from solver import engine_v2
@@ -229,3 +229,8 @@ def create_semester(s: SemesterIn, sb=Depends(get_sb)):
     if s.end_date <= s.start_date:
         raise HTTPException(400, "end_date must be after start_date")
     return save_semester(sb, s.code, s.name, s.start_date, s.end_date)
+
+@app.get("/groups")
+def read_groups(sb=Depends(get_sb)):
+    """All intake groups with their student counts."""
+    return list_groups(sb)

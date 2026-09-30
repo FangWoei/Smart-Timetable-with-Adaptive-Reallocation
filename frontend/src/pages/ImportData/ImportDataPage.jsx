@@ -1,16 +1,12 @@
-import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import Tabs from '../../components/Tabs.jsx'
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { api } from "../../api";
+import Tabs from "../../components/Tabs.jsx";
 
 const TABS = [
-  { id: 'bulk', label: 'Bulk import' },
-  { id: 'manual', label: 'Add manually' },
-]
-
-const FILE_TYPES = [
-  { id: 'sheet', label: 'Excel / CSV sheet', accept: '.xlsx,.csv', hint: '.xlsx, .csv up to 10 MB' },
-  { id: 'pdf', label: 'PDF class list', accept: '.pdf', hint: '.pdf up to 10 MB' },
-]
+  { id: "bulk", label: "Bulk import" },
+  { id: "manual", label: "Add manually" },
+];
 
 const MANUAL_CATEGORIES = [
   { id: 'subject', label: 'Subject / course', desc: 'Add subjects/courses', badge: 'SU' },
@@ -18,209 +14,298 @@ const MANUAL_CATEGORIES = [
   { id: 'lecturer', label: 'Lecturer', desc: 'Add lecturers', badge: 'LC' },
   { id: 'classroom', label: 'Classroom', desc: 'Add classrooms', badge: 'RM' },
   { id: 'student', label: 'Student', desc: 'Add students', badge: 'ST' },
-]
+];
 
 function BulkImport() {
-  const [type, setType] = useState('sheet')
-  const [file, setFile] = useState(null)
-  const current = FILE_TYPES.find((t) => t.id === type)
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  function pick(f) {
+    setFile(f ?? null);
+    setPreview(null);
+    setError("");
+    setDone("");
+  }
+
+  async function run(action) {
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    setDone("");
+    try {
+      if (action === "preview") {
+        setPreview(await api.importPreview(file));
+      } else {
+        const r = await api.importCommit(file);
+        setDone(`Imported ${r.classes} classes and ${r.groups} intake groups.`);
+        setPreview(null);
+        setFile(null);
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="text-lg font-semibold text-ink">Import students, lecturers or subjects</h1>
+      <h1 className="text-lg font-semibold text-ink">Import course listing</h1>
       <p className="mt-1 text-sm text-ink-3">
-        Upload a PDF class list or an Excel/CSV sheet — we'll match the columns and let you confirm before anything is added.
+        Upload the Course Listing CSV. Student names in the file are ignored —
+        only the head count per class is read.
       </p>
-
-      <div className="mt-4 inline-flex rounded bg-panel p-0.5" role="tablist" aria-label="File type">
-        {FILE_TYPES.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            type="button"
-            aria-selected={t.id === type}
-            onClick={() => { setType(t.id); setFile(null) }}
-            className={[
-              'h-[26px] rounded-[3px] px-4 text-[13px]',
-              t.id === type ? 'border border-line-strong bg-white font-semibold text-navy-700' : 'border border-transparent text-ink-3',
-            ].join(' ')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
         <label
           onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); setFile(e.dataTransfer.files?.[0] ?? null) }}
-          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500"
-        >
+          onDrop={(e) => {
+            e.preventDefault();
+            pick(e.dataTransfer.files?.[0]);
+          }}
+          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
           <input
             type="file"
-            accept={current.accept}
+            accept=".csv"
             className="sr-only"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => pick(e.target.files?.[0])}
           />
           {file ? (
             <>
               <span className="text-sm font-medium text-ink">{file.name}</span>
-              <span className="text-xs text-ink-4">{(file.size / 1024).toFixed(0)} KB · choose another to replace</span>
+              <span className="text-xs text-ink-4">
+                {(file.size / 1024).toFixed(0)} KB · choose another to replace
+              </span>
             </>
           ) : (
             <>
-              <span className="text-sm text-ink-2">Drag a file here, or click to browse</span>
-              <span className="text-xs text-ink-4">{current.hint}</span>
-              <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">Choose file</span>
+              <span className="text-sm text-ink-2">
+                Drag a file here, or click to browse
+              </span>
+              <span className="text-xs text-ink-4">.csv up to 2 MB</span>
+              <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
+                Choose file
+              </span>
             </>
           )}
         </label>
 
         <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
-          <h2 className="text-[13px] font-semibold text-ink">What we'll try to detect</h2>
+          <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
           <ul className="mt-2 list-disc space-y-1.5 pl-4">
-            <li>Student ID, full name, intake and group columns</li>
-            <li>Lecturer name, email and subjects taught (if present)</li>
-            <li>Subject code and name, for a subject list sheet</li>
+            <li>Intake group, level and head count</li>
+            <li>Course code, name and hours per week</li>
+            <li>Lecturer name and full-time / part-time</li>
+            <li className="text-ink-4">Student names are skipped</li>
           </ul>
         </aside>
       </div>
 
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {done && <p className="mt-3 text-sm text-green-700">{done}</p>}
+
+      {preview && (
+        <div className="mt-6 space-y-4">
+          {preview.warnings.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+              <p className="text-[13px] font-semibold text-amber-900">
+                Check these with the coordinator
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-amber-800">
+                {preview.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <h2 className="text-[13px] font-semibold text-ink">
+            {preview.classes.length} classes ·{" "}
+            {Object.keys(preview.groups).length} intake groups
+          </h2>
+
+          <div className="overflow-x-auto rounded-md border border-line bg-white">
+            <table className="w-full text-xs">
+              <thead className="bg-panel text-left text-ink-2">
+                <tr>
+                  {[
+                    "Code",
+                    "Module",
+                    "Groups",
+                    "Students",
+                    "Hours",
+                    "Lecturer",
+                  ].map((h) => (
+                    <th key={h} className="px-3 py-2 font-semibold">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.classes.map((c) => (
+                  <tr key={c.id} className="border-t border-line">
+                    <td className="px-3 py-2 font-medium text-ink">{c.id}</td>
+                    <td className="px-3 py-2 text-ink-2">{c.module}</td>
+                    <td className="px-3 py-2 text-ink-4">
+                      {c.groups.join(", ")}
+                    </td>
+                    <td className="px-3 py-2 text-ink-2">{c.students}</td>
+                    <td className="px-3 py-2 text-ink-2">{c.weekly_hours}h</td>
+                    <td className="px-3 py-2 text-ink-2">
+                      {c.lecturer}
+                      {c.part_time && (
+                        <span className="ml-1 rounded bg-panel px-1 text-[10px]">
+                          PT
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {preview.skipped.length > 0 && (
+            <p className="text-xs text-ink-4">
+              Skipped (not timetabled):{" "}
+              {preview.skipped.map((s) => `${s.code} ${s.group}`).join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="mt-6 flex justify-end gap-2">
-        <button type="button" onClick={() => setFile(null)} className="h-[30px] rounded border border-line-strong bg-white px-4 text-[13px] text-ink-2 hover:bg-panel">
+        <button
+          type="button"
+          onClick={() => pick(null)}
+          className="h-[30px] rounded border border-line-strong bg-white px-4 text-[13px] text-ink-2 hover:bg-panel">
           Discard
         </button>
-        <button type="button" disabled={!file} className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-40">
-          Import
+        <button
+          type="button"
+          disabled={!file || busy}
+          onClick={() => run(preview ? "commit" : "preview")}
+          className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-40">
+          {busy ? "Working…" : preview ? "Confirm import" : "Preview"}
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 function ManualImport() {
-  const [category, setCategory] = useState('subject')
+  const [category, setCategory] = useState('subject');
 
-  // 1. Subject 表单状态
-  const [subjectCode, setSubjectCode] = useState('BUS204')
-  const [subjectName, setSubjectName] = useState('Financial Management')
-  const [sessionType, setSessionType] = useState('Lecture + tutorial')
-  const [hours, setHours] = useState('4')
-  const [groups, setGroups] = useState(['DB2601A', 'DB2601B'])
-  const [lecturer, setLecturer] = useState('Ms Koh Bee Hoon')
-  const [needsLab, setNeedsLab] = useState(false)
+  const [subjectCode, setSubjectCode] = useState('BUS204');
+  const [subjectName, setSubjectName] = useState('Financial Management');
+  const [sessionType, setSessionType] = useState('Lecture + tutorial');
+  const [hours, setHours] = useState('4');
+  const [groups, setGroups] = useState(['DB2601A', 'DB2601B']);
+  const [lecturer, setLecturer] = useState('Ms Koh Bee Hoon');
+  const [needsLab, setNeedsLab] = useState(false);
 
-  // 2. Group 表单状态
-  const [groupCode, setGroupCode] = useState('')
-  const [classSize, setClassSize] = useState('35')
-  const [groupSubjects, setGroupSubjects] = useState({
-    businessStat: true,
-    accounting: true,
-    academicEnglish: true,
-  })
+  const [groupCode, setGroupCode] = useState('');
+  const [classSize, setClassSize] = useState('35');
 
-  // 3. Lecturer 表单状态
-  const [lecturerName, setLecturerName] = useState('')
-  const [lecturerEmail, setLecturerEmail] = useState('')
-  const [lecturerType, setLecturerType] = useState('Full-time')
+  const [lecturerName, setLecturerName] = useState('');
+  const [lecturerEmail, setLecturerEmail] = useState('');
+  const [lecturerType, setLecturerType] = useState('Full-time');
 
-  // 4. Classroom 表单状态
-  const [roomCode, setRoomCode] = useState('')
-  const [roomCapacity, setRoomCapacity] = useState('40')
-  const [roomType, setRoomType] = useState('Standard Lecture Room')
+  const [roomCode, setRoomCode] = useState('');
+  const [roomCapacity, setRoomCapacity] = useState('40');
+  const [roomType, setRoomType] = useState('Standard Lecture Room');
 
-  // 5. Student 表单状态
-  const [studentId, setStudentId] = useState('')
-  const [studentName, setStudentName] = useState('')
-  const [studentGroup, setStudentGroup] = useState('DB2601A')
+  const [studentId, setStudentId] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [studentGroup, setStudentGroup] = useState('DB2601A');
 
-  // 统一的已添加记录列表（初始为空，有数据时才渲染表格）
-  const [addedRecords, setAddedRecords] = useState([])
+  const [addedRecords, setAddedRecords] = useState([]);
 
   const handleRemove = (id) => {
-    setAddedRecords(addedRecords.filter(r => r.id !== id))
-  }
+    setAddedRecords(addedRecords.filter(r => r.id !== id));
+  };
 
   const removeGroupTag = (g) => {
-    setGroups(groups.filter(item => item !== g))
-  }
+    setGroups(groups.filter(item => item !== g));
+  };
 
-  // 点击添加按钮的处理函数
   const handleAddRecord = () => {
-    let newRec = null
+    let newRec = null;
 
     if (category === 'subject') {
-      if (!subjectCode.trim()) return
+      if (!subjectCode.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Course',
         name: `${subjectCode} — ${subjectName}`,
         detail: `${hours} hrs/wk · ${groups.join(', ')}`,
-      }
+      };
     } else if (category === 'group') {
-      if (!groupCode.trim()) return
+      if (!groupCode.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Group',
         name: groupCode,
         detail: `Size: ${classSize} · Year 1`,
-      }
-      setGroupCode('')
+      };
+      setGroupCode('');
     } else if (category === 'lecturer') {
-      if (!lecturerName.trim()) return
+      if (!lecturerName.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Lecturer',
         name: lecturerName,
         detail: `${lecturerType} · ${lecturerEmail || 'No email'}`,
-      }
-      setLecturerName('')
-      setLecturerEmail('')
+      };
+      setLecturerName('');
+      setLecturerEmail('');
     } else if (category === 'classroom') {
-      if (!roomCode.trim()) return
+      if (!roomCode.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Room',
         name: roomCode,
         detail: `${roomType} (Cap: ${roomCapacity})`,
-      }
-      setRoomCode('')
+      };
+      setRoomCode('');
     } else if (category === 'student') {
-      if (!studentId.trim() || !studentName.trim()) return
+      if (!studentId.trim() || !studentName.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Student',
         name: `${studentId} — ${studentName}`,
         detail: `Group ${studentGroup}`,
-      }
-      setStudentId('')
-      setStudentName('')
+      };
+      setStudentId('');
+      setStudentName('');
     }
 
     if (newRec) {
-      setAddedRecords([newRec, ...addedRecords])
+      setAddedRecords([newRec, ...addedRecords]);
     }
-  }
+  };
 
-  // 根据当前 category 动态显示按钮文案
   const getAddButtonText = () => {
     switch (category) {
-      case 'subject': return 'Add subject'
-      case 'group': return 'Add group'
-      case 'lecturer': return 'Add lecturer'
-      case 'classroom': return 'Add classroom'
-      case 'student': return 'Add student'
-      default: return 'Add record'
+      case 'subject': return 'Add subject';
+      case 'group': return 'Add group';
+      case 'lecturer': return 'Add lecturer';
+      case 'classroom': return 'Add classroom';
+      case 'student': return 'Add student';
+      default: return 'Add record';
     }
-  }
+  };
 
   return (
     <div className="flex min-h-0 flex-1">
-      {/* 左侧标准样本边栏 */}
       <aside className="flex w-[260px] shrink-0 flex-col border-r border-line bg-white">
         <ul className="min-h-0 flex-1 overflow-y-auto space-y-0.5">
           {MANUAL_CATEGORIES.map((cat) => {
-            const active = cat.id === category
+            const active = cat.id === category;
             return (
               <li key={cat.id}>
                 <button
@@ -243,7 +328,7 @@ function ManualImport() {
                   </div>
                 </button>
               </li>
-            )
+            );
           })}
         </ul>
         <div className="border-t border-line-2 px-3 py-2 text-[11px] text-ink-4">
@@ -251,12 +336,10 @@ function ManualImport() {
         </div>
       </aside>
 
-      {/* 右侧主表单区 */}
       <main className="min-w-0 flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-4xl">
           <div className="rounded-lg border border-line bg-white p-6 shadow-sm">
             
-            {/* 1. Subject 表单 */}
             {category === 'subject' && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a subject / course</h2>
@@ -369,7 +452,6 @@ function ManualImport() {
               </>
             )}
 
-            {/* 2. Group 表单 */}
             {category === 'group' && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a group</h2>
@@ -438,7 +520,6 @@ function ManualImport() {
               </>
             )}
 
-            {/* 3. Lecturer 表单 */}
             {category === 'lecturer' && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a lecturer</h2>
@@ -482,7 +563,6 @@ function ManualImport() {
               </>
             )}
 
-            {/* 4. Classroom 表单 */}
             {category === 'classroom' && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a classroom / venue</h2>
@@ -526,7 +606,6 @@ function ManualImport() {
               </>
             )}
 
-            {/* 5. Student 表单 */}
             {category === 'student' && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a student</h2>
@@ -572,7 +651,6 @@ function ManualImport() {
 
           </div>
 
-          {/* 表单右下角操作按钮 */}
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-4 text-xs font-medium text-ink-2 hover:bg-panel">
               Cancel
@@ -586,7 +664,6 @@ function ManualImport() {
             </button>
           </div>
 
-          {/* 条件渲染：只有当 addedRecords 有数据时才显示 Added this session 列表 */}
           {addedRecords.length > 0 && (
             <div className="mt-8">
               <div className="flex items-center justify-between pb-2 text-xs text-ink-4 border-b border-line">
@@ -618,12 +695,14 @@ function ManualImport() {
         </div>
       </main>
     </div>
-  )
+  );
 }
 
 export default function ImportDataPage() {
-  const [params, setParams] = useSearchParams()
-  const tab = TABS.some((t) => t.id === params.get('tab')) ? params.get('tab') : 'bulk'
+  const [params, setParams] = useSearchParams();
+  const tab = TABS.some((t) => t.id === params.get("tab"))
+    ? params.get("tab")
+    : "bulk";
 
   return (
     <div className="min-h-0 flex-1 overflow-auto flex flex-col">
@@ -631,8 +710,8 @@ export default function ImportDataPage() {
         <Tabs tabs={TABS} value={tab} onChange={(id) => setParams({ tab: id })} label="Import mode" />
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        {tab === 'bulk' ? <div className="p-6"><BulkImport /></div> : <ManualImport />}
+        {tab === "bulk" ? <div className="p-6"><BulkImport /></div> : <ManualImport />}
       </div>
     </div>
-  )
+  );
 }
