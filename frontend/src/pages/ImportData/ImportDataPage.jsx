@@ -221,6 +221,7 @@ function ManualImport() {
 
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState(''); // 新增：学生邮箱 State
   const [studentGroup, setStudentGroup] = useState('DB2601A');
 
   const [addedRecords, setAddedRecords] = useState([]);
@@ -278,10 +279,11 @@ function ManualImport() {
         id: Date.now(),
         type: 'Student',
         name: `${studentId} — ${studentName}`,
-        detail: `Group ${studentGroup}`,
+        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`, // 包含邮箱显示
       };
       setStudentId('');
       setStudentName('');
+      setStudentEmail(''); // 清空邮箱输入框
     }
 
     if (newRec) {
@@ -611,7 +613,7 @@ function ManualImport() {
                 <h2 className="text-sm font-bold text-ink">Add a student</h2>
                 <p className="text-xs text-ink-3">Enroll an individual student into a base group</p>
 
-                <div className="mt-5 grid grid-cols-2 gap-4">
+                <div className="mt-5 grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Student ID</label>
                     <input
@@ -629,6 +631,16 @@ function ManualImport() {
                       placeholder="e.g. John Doe"
                       value={studentName}
                       onChange={(e) => setStudentName(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Email address</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. john@college.edu.my"
+                      value={studentEmail}
+                      onChange={(e) => setStudentEmail(e.target.value)}
                       className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                     />
                   </div>
