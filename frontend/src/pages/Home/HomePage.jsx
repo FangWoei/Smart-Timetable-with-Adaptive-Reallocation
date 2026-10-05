@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 
 const STATS = [
-  { label: 'Active intakes', value: '12', note: '28 groups scheduled', to: '/people', cta: 'Manage people' },
-  { label: 'Lecturers available', value: '47', note: '6 with restricted hours', to: '/people', cta: 'Manage people' },
-  { label: 'Room utilisation', value: '78%', note: 'across 19 classrooms', to: '/group-view', cta: 'Group view' },
-  { label: 'Unresolved conflicts', value: '3', note: '2 room clashes, 1 retake', to: '/group-view', cta: 'Resolve in Group view', danger: true },
+  { label: 'Active intakes', value: '12', note: '28 groups scheduled', to: '/people', cta: 'Manage data' },
+  { label: 'Lecturers available', value: '47', note: '6 with restricted hours', to: '/people', cta: 'Manage data' },
+  { label: 'Room utilisation', value: '78%', note: 'across 19 classrooms', to: '/group-view', cta: 'Schedule' },
+  { label: 'Unresolved conflicts', value: '3', note: '2 room clashes, 1 retake', to: '/group-view', cta: 'Resolve in Schedule', danger: true },
 ]
 
 export default function HomePage() {
