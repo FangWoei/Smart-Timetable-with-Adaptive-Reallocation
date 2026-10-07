@@ -1,9 +1,10 @@
+// src/pages/GroupView/Sidebar.jsx
 import { useMemo, useState } from 'react'
 import { CONSTRAINTS, RESOURCES } from '../../data/timetable.js'
 
 const sectionLabel = 'px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-4'
 
-export default function Sidebar({ groups, selectedId, onSelect }) {
+export default function Sidebar({ groups, selectedId, onSelect, view = 'group' }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(true)
 
@@ -11,6 +12,11 @@ export default function Sidebar({ groups, selectedId, onSelect }) {
     const q = query.trim().toLowerCase()
     return q ? groups.filter((g) => g.id.toLowerCase().includes(q)) : groups
   }, [groups, query])
+
+  // 根据当前视图动态确定分类标题与搜索提示
+  const sectionCategory = view === 'lecturer' ? 'Lecturers' : view === 'room' ? 'Rooms' : 'Intakes'
+  const sectionTitle = view === 'lecturer' ? 'All Lecturers' : view === 'room' ? 'All Facilities' : 'January 2026'
+  const searchPlaceholder = view === 'lecturer' ? 'Search lecturers…' : view === 'room' ? 'Search rooms…' : 'Search groups, subjects…'
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white">
@@ -22,14 +28,14 @@ export default function Sidebar({ groups, selectedId, onSelect }) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search groups, subjects…"
-            aria-label="Search groups and subjects"
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             className="w-full bg-transparent text-xs text-ink outline-none placeholder:text-ink-4"
           />
         </label>
       </div>
 
-      <div className={sectionLabel.replace('pt-4', 'pt-1')}>Intakes</div>
+      <div className={sectionLabel.replace('pt-4', 'pt-1')}>{sectionCategory}</div>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -42,7 +48,7 @@ export default function Sidebar({ groups, selectedId, onSelect }) {
         >
           <path d="M1 0 L7 4 L1 8 Z" fill="currentColor" />
         </svg>
-        <span>January 2026</span>
+        <span>{sectionTitle}</span>
         <span className="ml-auto text-[11px] font-normal text-ink-4">{groups.length}</span>
       </button>
 
@@ -63,20 +69,22 @@ export default function Sidebar({ groups, selectedId, onSelect }) {
                       : 'border-transparent text-ink-2 hover:bg-panel',
                   ].join(' ')}
                 >
-                  {g.id}
-                  <span
-                    className={[
-                      'ml-auto text-[11px] font-normal',
-                      g.alert ? 'text-danger' : active ? 'text-navy-700' : 'text-ink-4',
-                    ].join(' ')}
-                  >
-                    {g.count}{g.alert && ' !'}
-                  </span>
+                  <span className="truncate">{g.id}</span>
+                  {view === 'group' && (
+                    <span
+                      className={[
+                        'ml-auto text-[11px] font-normal shrink-0',
+                        g.alert ? 'text-danger' : active ? 'text-navy-700' : 'text-ink-4',
+                      ].join(' ')}
+                    >
+                      {g.count}{g.alert && ' !'}
+                    </span>
+                  )}
                 </button>
               </li>
             )
           })}
-          {filtered.length === 0 && <li className="px-10 py-2 text-xs text-ink-4">No groups match</li>}
+          {filtered.length === 0 && <li className="px-10 py-2 text-xs text-ink-4">No items match</li>}
         </ul>
       )}
 
