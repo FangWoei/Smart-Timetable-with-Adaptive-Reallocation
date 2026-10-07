@@ -33,7 +33,7 @@ export default function StudentViewPage() {
           day: 'MONDAY',
           startSlot: 13, 
           colSpan: 4,  
-          timeStr: '02:00 – 04:00',
+          timeStr: '14:00 – 16:00',
           room: 'BR-205',
           instructor: 'Tech Team',
           startDate: '12/01/2026',
@@ -58,7 +58,7 @@ export default function StudentViewPage() {
           name: 'Accounting II',
           day: 'WEDNESDAY',
           startSlot: 1,  
-          colSpan: 3,  // 调大 colSpan，确保有足够宽度展示完整名称
+          colSpan: 3,  
           timeStr: '08:00 – 09:30',
           room: 'BR-104',
           instructor: 'Dr. Wang',
@@ -72,7 +72,7 @@ export default function StudentViewPage() {
           name: 'Microeconomics',
           day: 'WEDNESDAY',
           startSlot: 5,  
-          colSpan: 3,  // 调大 colSpan，避免挤压
+          colSpan: 3,  
           timeStr: '09:30 – 11:00',
           room: 'BR-104',
           instructor: 'Dr. Wang',
@@ -100,7 +100,7 @@ export default function StudentViewPage() {
           day: 'THURSDAY',
           startSlot: 11, 
           colSpan: 4,  
-          timeStr: '01:00 – 03:00',
+          timeStr: '13:00 – 15:00',
           room: 'BR-203',
           instructor: 'Dr. Wang',
           startDate: '08/01/2026',
@@ -126,7 +126,7 @@ export default function StudentViewPage() {
           day: 'FRIDAY',
           startSlot: 19, 
           colSpan: 3,  
-          timeStr: '05:00 – 06:30',
+          timeStr: '17:00 – 18:30',
           room: 'Hall B',
           instructor: 'Guest',
           startDate: '09/01/2026',
@@ -147,13 +147,14 @@ export default function StudentViewPage() {
   const student = STUDENTS.find((s) => s.id === selectedId) || STUDENTS[0]
   const currentTimetable = timetableData[student.id] || timetableData['2401019']
 
+  // 将下午时间全部规范为 24 小时制 (13:00 开始)
   const timeSlots = [
     '08:00–08:30', '08:30–09:00', '09:00–09:30', '09:30–10:00',
     '10:00–10:30', '10:30–11:00', '11:00–11:30', '11:30–12:00',
-    '12:00–12:30', '12:30–01:00', '01:00–01:30', '01:30–02:00',
-    '02:00–02:30', '02:30–03:00', '03:00–03:30', '03:30–04:00',
-    '04:00–04:30', '04:30–05:00', '05:00–05:30', '05:30–06:00',
-    '06:00–06:30', '06:30–07:00'
+    '12:00–12:30', '12:30–13:00', '13:00–13:30', '13:30–14:00',
+    '14:00–14:30', '14:30–15:00', '15:00–15:30', '15:30–16:00',
+    '16:00–16:30', '16:30–17:00', '17:00–17:30', '17:30–18:00',
+    '18:00–18:30', '18:30–19:00'
   ]
 
   const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
@@ -259,7 +260,6 @@ export default function StudentViewPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  {/* 将表格最小宽度从 1600px 提升到 1800px，同时增大时间单元格宽度 w-24，给课程名字留出充足空间 */}
                   <table className="w-full border-collapse text-[11px] text-ink min-w-[1800px]">
                     <thead>
                       <tr className="border-b border-line bg-panel font-semibold text-ink-3">
@@ -302,9 +302,8 @@ export default function StudentViewPage() {
                                   <td key={course.id} colSpan={course.colSpan} className={`border-r border-line p-1.5 align-middle ${toneClasses.split(' ')[0]}`}>
                                     <div className={`rounded border ${toneClasses.split(' ')[1]} bg-white p-2 shadow-xs space-y-1`}>
                                       <div className="flex justify-between items-center gap-2">
-                                        {/* 移除 truncate，允许长名字自然展示（或在宽度极小时自适应） */}
                                         <p className={`font-bold ${toneClasses.split(' ')[2]} text-[11px] leading-tight`}>{course.name}</p>
-                                        <span className="text-[9px] text-ink-4 bg-panel px-1.5 py-0.5 rounded shrink-0" title={`Active: ${course.startDate} to ${course.endDate}`}>
+                                        <span className="text-[9px] text-ink-4 bg-panel px-1.5 py-0.5 rounded shrink-0 font-mono" title={`Active: ${course.startDate} to ${course.endDate}`}>
                                           {course.startDate.slice(0, 5)} ~ {course.endDate.slice(0, 5)}
                                         </span>
                                       </div>
