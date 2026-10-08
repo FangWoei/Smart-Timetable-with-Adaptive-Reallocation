@@ -12,9 +12,12 @@ from db.calendar import (
     add_holiday, delete_holiday, list_holidays, list_semesters,
     save_semester, sync_holidays,
 )
+
 from db.repository import (
-    get_active_timetable, get_client, list_groups, list_runs, load_input, save_run, seed,
+    get_active_timetable, get_client, get_entry, get_pins, list_groups,
+    list_runs, load_input, log_action, move_entry, save_run, seed, set_lock,
 )
+
 from importer.reader import parse_any as parse
 from importer.run_import import PLACEHOLDER_ROOMS
 from solver import engine as engine_v1
@@ -37,6 +40,16 @@ class SemesterIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+class MoveIn(BaseModel):
+    day: int = Field(ge=1, le=5)
+    start_slot: int = Field(ge=1, le=10)
+    room: str = Field(min_length=1, max_length=80)
+    force: bool = False
+
+
+class LockIn(BaseModel):
+    locked: bool
 
 app = FastAPI(
     title="STAR API",
@@ -124,12 +137,14 @@ def read_runs(sb=Depends(get_sb)):
 
 @app.post("/timetable/generate", status_code=201)
 def generate(engine: Literal["engine", "engine_v2"] = "engine_v2",
-             time_limit: float = 30, sb=Depends(get_sb)):
+             time_limit: float = 30, respect_locks: bool = True, sb=Depends(get_sb)):
     """Run the AI solver on the current data and save it as the active timetable."""
     if not 0 < time_limit <= 120:
         raise HTTPException(400, "time_limit must be between 0 and 120 seconds")
 
     data = load_input(sb)
+    if respect_locks:
+        data["pinned"] = get_pins(sb)
     if not data["lessons"]:
         raise HTTPException(400, "No lessons in the database. Import data first.")
 
@@ -234,3 +249,52 @@ def create_semester(s: SemesterIn, sb=Depends(get_sb)):
 def read_groups(sb=Depends(get_sb)):
     """All intake groups with their student counts."""
     return list_groups(sb)
+
+# ---------- MANUAL EDIT ----------
+@app.patch("/timetable/entries/{entry_id}")
+def move(entry_id: int, m: MoveIn, sb=Depends(get_sb)):
+    """Move one class. Rejected if it creates a conflict, unless force=true."""
+    entry = get_entry(sb, entry_id)
+    if entry is None:
+        raise HTTPException(404, "Entry not found")
+    if entry["is_locked"]:
+        raise HTTPException(409, "This class is locked. Unlock it first.")
+
+    tt = get_active_timetable(sb)
+    if tt is None:
+        raise HTTPException(404, "No active timetable")
+
+    proposed = [{
+        "lesson_id": e["session_id"],
+        "room": m.room if e["entry_id"] == entry_id else e["room"],
+        "day": m.day if e["entry_id"] == entry_id else e["day"],
+        "start_slot": m.start_slot if e["entry_id"] == entry_id else e["start_slot"],
+    } for e in tt["entries"]]
+
+    data = load_input(sb)
+    problems = check(data, proposed)
+
+    if problems and not m.force:
+        return {"saved": False, "valid": False, "problems": problems}
+
+    try:
+        move_entry(sb, entry_id, m.day, m.start_slot, m.room)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    log_action(sb, "move_entry", {
+        "entry_id": entry_id,
+        "to": {"day": m.day, "slot": m.start_slot, "room": m.room},
+        "forced": bool(problems),
+    })
+    return {"saved": True, "valid": not problems, "problems": problems}
+
+
+@app.post("/timetable/entries/{entry_id}/lock")
+def lock(entry_id: int, body: LockIn, sb=Depends(get_sb)):
+    """Lock or unlock a class so it can't be moved or re-solved."""
+    if get_entry(sb, entry_id) is None:
+        raise HTTPException(404, "Entry not found")
+    row = set_lock(sb, entry_id, body.locked)
+    log_action(sb, "lock_entry" if body.locked else "unlock_entry", {"entry_id": entry_id})
+    return {"entry_id": entry_id, "locked": row["is_locked"]}

@@ -145,8 +145,8 @@ def get_active_timetable(sb):
     run = runs[0]
 
     rows = sb.table("timetable_entries").select(
-        "day_of_week, start_slot, hours, rooms(code), "
-        "sessions(session_no, classes(code, module_name, lecturers(name), "
+        "id, is_locked, day_of_week, start_slot, hours, rooms(code), "
+        "sessions(id, session_no, classes(code, module_name, lecturers(name), "
         "class_groups(intake_groups(code))))"
     ).eq("run_id", run["id"]).execute().data
 
@@ -156,6 +156,9 @@ def get_active_timetable(sb):
         c = s["classes"]
         start = r["start_slot"] - 1
         entries.append({
+            "entry_id": r["id"],
+            "locked": r["is_locked"],
+            "session_id": str(s["id"]),
             "class_code": c["code"],
             "session_no": s["session_no"],
             "module": f"{c['module_name']} (part {s['session_no']})",
@@ -176,3 +179,53 @@ def list_groups(sb):
               .select("code, student_count, programme, intake")
               .order("code")
               .execute().data)
+
+# ---------- MANUAL EDIT ----------
+def get_entry(sb, entry_id):
+    """One timetable entry, or None if it doesn't exist."""
+    rows = (sb.table("timetable_entries")
+              .select("id, run_id, session_id, room_id, day_of_week, start_slot, hours, is_locked")
+              .eq("id", entry_id).execute().data)
+    return rows[0] if rows else None
+
+
+def move_entry(sb, entry_id, day, start_slot, room_code):
+    """Change where and when one class happens."""
+    room_ids = _id_map(sb, "rooms", "code")
+    if room_code not in room_ids:
+        raise ValueError(f"Unknown room {room_code}")
+    return (sb.table("timetable_entries")
+              .update({"day_of_week": day,
+                       "start_slot": start_slot,
+                       "room_id": room_ids[room_code]})
+              .eq("id", entry_id).execute().data[0])
+
+
+def set_lock(sb, entry_id, locked):
+    """Lock or unlock one class."""
+    return (sb.table("timetable_entries")
+              .update({"is_locked": locked})
+              .eq("id", entry_id).execute().data[0])
+
+
+def get_pins(sb):
+    """Locked classes of the active run, so the solver can keep them in place."""
+    runs = sb.table("timetable_runs").select("id").eq("is_active", True).execute().data
+    if not runs:
+        return {}
+    rows = (sb.table("timetable_entries")
+              .select("session_id, day_of_week, start_slot, rooms(code)")
+              .eq("run_id", runs[0]["id"]).eq("is_locked", True).execute().data)
+    return {str(r["session_id"]): {"day": r["day_of_week"],
+                                   "start_slot": r["start_slot"],
+                                   "room": r["rooms"]["code"]} for r in rows}
+
+
+def log_action(sb, action, detail=None, actor=None):
+    """Record what happened. Never raises — logging must not break a request."""
+    try:
+        sb.table("audit_log").insert({
+            "actor_email": actor, "action": action, "detail": detail,
+        }).execute()
+    except Exception:
+        pass

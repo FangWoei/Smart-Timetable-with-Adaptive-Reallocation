@@ -26,7 +26,7 @@ def _ok(status):
 
 
 # ---------- STAGE 1: decide WHEN each lesson happens ----------
-def plan_times(lessons, rooms, groups, size, time_limit, seed):
+def plan_times(lessons, rooms, groups, size, pinned, time_limit, seed):
     model = cp_model.CpModel()
     x = {}
     lect_use, group_use = defaultdict(list), defaultdict(list)
@@ -35,9 +35,14 @@ def plan_times(lessons, rooms, groups, size, time_limit, seed):
     penalties = []
 
     for l in lessons:
+        pin = pinned.get(l["id"])
         choices = []
         for d in range(len(DAYS)):
+            if pin and pin["day"] - 1 != d:
+                continue
             for s in range(SLOTS - l["hours"] + 1):
+                if pin and pin["start_slot"] - 1 != s:
+                    continue
                 v = model.new_bool_var(f"{l['id']}_{d}_{s}")
                 x[l["id"], d, s] = v
                 choices.append(v)
@@ -110,16 +115,19 @@ def plan_times(lessons, rooms, groups, size, time_limit, seed):
 
 
 # ---------- STAGE 2: decide WHERE (times are fixed) ----------
-def assign_rooms(lessons, rooms, size, times, time_limit, seed):
+def assign_rooms(lessons, rooms, size, times, pinned, time_limit, seed):
     model = cp_model.CpModel()
     y = {}
     room_use = defaultdict(list)
     costs = []
 
     for l in lessons:
+        pin = pinned.get(l["id"])
         d, s = times[l["id"]]
         choices = []
         for r, info in rooms.items():
+            if pin and pin["room"] != r:
+                continue
             if _is_lab_room(info) != l["lab"] or info["cap"] < size[l["id"]]:
                 continue
             v = model.new_bool_var(f"{l['id']}_{r}")
@@ -147,14 +155,15 @@ def solve(data, time_limit=10, seed=None):
     rooms, groups, lessons = data["rooms"], data["groups"], data["lessons"]
     by_id = {l["id"]: l for l in lessons}
     size = {l["id"]: class_size(l, groups) for l in lessons}
+    pinned = data.get("pinned", {})
 
     for l in lessons:
         if not any(_is_lab_room(i) == l["lab"] and i["cap"] >= size[l["id"]]
                    for i in rooms.values()):
             raise SolverError(f"No suitable room for {l['id']} {l['module']}")
 
-    times, pen1, st1 = plan_times(lessons, rooms, groups, size, time_limit, seed)
-    assigned, pen2, st2 = assign_rooms(lessons, rooms, size, times, time_limit, seed)
+    times, pen1, st1 = plan_times(lessons, rooms, groups, size, pinned, time_limit, seed)
+    assigned, pen2, st2 = assign_rooms(lessons, rooms, size, times, pinned, time_limit, seed)
 
     entries = []
     for lid, (d, s) in times.items():
