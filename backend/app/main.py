@@ -15,7 +15,7 @@ from db.calendar import (
 
 from db.repository import (
     get_active_timetable, get_client, get_entry, get_pins, list_groups,
-    list_runs, load_input, log_action, move_entry, save_run, seed, set_lock,
+    list_runs, load_input, log_action, move_entry, save_run, seed, set_lock,create_room, entries_in_room, get_room, list_rooms, soft_delete_room, update_room,
 )
 
 from importer.reader import parse_any as parse
@@ -50,6 +50,20 @@ class MoveIn(BaseModel):
 
 class LockIn(BaseModel):
     locked: bool
+
+class RoomIn(BaseModel):
+    code: str = Field(min_length=1, max_length=80)
+    name: str | None = Field(default=None, max_length=120)
+    capacity: int = Field(ge=1, le=1000)
+    room_type: Literal["lecture", "lab"]
+    remarks: str | None = Field(default=None, max_length=300)
+
+
+class RoomStatusIn(BaseModel):
+    status: Literal["available", "maintenance", "out_of_service"]
+    remarks: str | None = Field(default=None, max_length=300)
+    unavailable_from: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    unavailable_to: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 app = FastAPI(
     title="STAR API",
@@ -298,3 +312,62 @@ def lock(entry_id: int, body: LockIn, sb=Depends(get_sb)):
     row = set_lock(sb, entry_id, body.locked)
     log_action(sb, "lock_entry" if body.locked else "unlock_entry", {"entry_id": entry_id})
     return {"entry_id": entry_id, "locked": row["is_locked"]}
+
+# ---------- ROOMS ----------
+@app.get("/rooms")
+def read_rooms(include_deleted: bool = False, sb=Depends(get_sb)):
+    return list_rooms(sb, include_deleted)
+
+
+@app.post("/rooms", status_code=201)
+def add_room(r: RoomIn, sb=Depends(get_sb)):
+    try:
+        row = create_room(sb, r.model_dump())
+    except Exception as e:
+        raise HTTPException(400, f"Could not create room: {e}")
+    log_action(sb, "create_room", {"code": r.code})
+    return row
+
+
+@app.patch("/rooms/{room_id}")
+def edit_room(room_id: int, r: RoomIn, sb=Depends(get_sb)):
+    row = update_room(sb, room_id, r.model_dump())
+    if row is None:
+        raise HTTPException(404, "Room not found")
+    log_action(sb, "update_room", {"room_id": room_id})
+    return row
+
+
+@app.patch("/rooms/{room_id}/status")
+def set_room_status(room_id: int, s: RoomStatusIn, sb=Depends(get_sb)):
+    """Mark a room unavailable (or available again) and see what it affects."""
+    room = get_room(sb, room_id)
+    if room is None:
+        raise HTTPException(404, "Room not found")
+    if s.unavailable_to and s.unavailable_from and s.unavailable_to < s.unavailable_from:
+        raise HTTPException(400, "unavailable_to must be on or after unavailable_from")
+
+    affected = entries_in_room(sb, room_id) if s.status != "available" else []
+    row = update_room(sb, room_id, s.model_dump())
+    log_action(sb, "room_status", {
+        "room_id": room_id, "status": s.status, "affected": len(affected),
+    })
+    return {
+        "room": row,
+        "affected_classes": [{
+            "entry_id": e["id"],
+            "code": e["sessions"]["classes"]["code"],
+            "module": e["sessions"]["classes"]["module_name"],
+            "day": e["day_of_week"],
+            "start_slot": e["start_slot"],
+        } for e in affected],
+    }
+
+
+@app.delete("/rooms/{room_id}", status_code=200)
+def remove_room(room_id: int, sb=Depends(get_sb)):
+    row = soft_delete_room(sb, room_id)
+    if row is None:
+        raise HTTPException(404, "Room not found")
+    log_action(sb, "delete_room", {"room_id": room_id})
+    return {"deleted": True, "room": row}

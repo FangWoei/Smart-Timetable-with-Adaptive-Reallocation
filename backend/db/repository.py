@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from supabase import create_client
+from datetime import date
 
 from solver.engine import slot_time
 
@@ -67,8 +68,9 @@ def seed(sb, data):
 # ---------- READ INPUT FOR THE SOLVER ----------
 def load_input(sb):
     """Read the input tables and return data in the solver's session format."""
+    all_rooms = sb.table("rooms").select(ROOM_FIELDS).execute().data
     rooms = {r["code"]: {"cap": r["capacity"], "type": r["room_type"]}
-             for r in sb.table("rooms").select("code, capacity, room_type").execute().data}
+             for r in all_rooms if room_is_open(r)}
 
     groups = {g["code"]: g["student_count"]
               for g in sb.table("intake_groups").select("code, student_count").execute().data}
@@ -229,3 +231,62 @@ def log_action(sb, action, detail=None, actor=None):
         }).execute()
     except Exception:
         pass
+
+ROOM_FIELDS = ("id, code, name, capacity, room_type, status, remarks, "
+               "unavailable_from, unavailable_to, is_deleted")
+
+
+def list_rooms(sb, include_deleted=False):
+    q = sb.table("rooms").select(ROOM_FIELDS).order("code")
+    if not include_deleted:
+        q = q.eq("is_deleted", False)
+    return q.execute().data
+
+
+def get_room(sb, room_id):
+    rows = sb.table("rooms").select(ROOM_FIELDS).eq("id", room_id).execute().data
+    return rows[0] if rows else None
+
+
+def create_room(sb, data):
+    return sb.table("rooms").insert(data).execute().data[0]
+
+
+def update_room(sb, room_id, data):
+    rows = sb.table("rooms").update(data).eq("id", room_id).execute().data
+    return rows[0] if rows else None
+
+
+def soft_delete_room(sb, room_id):
+    """Hide a room without breaking past timetables that reference it."""
+    rows = (sb.table("rooms").update({"is_deleted": True, "status": "out_of_service"})
+              .eq("id", room_id).execute().data)
+    return rows[0] if rows else None
+
+
+def room_is_open(room, on=None):
+    """True if the room can be scheduled on a given date."""
+    if room["is_deleted"]:
+        return False
+    if room["status"] == "available":
+        return True
+    on = on or date.today()
+    start, end = room["unavailable_from"], room["unavailable_to"]
+    if not start and not end:
+        return False                       # unavailable indefinitely
+    if start and on < date.fromisoformat(start):
+        return True                        # outage hasn't started
+    if end and on > date.fromisoformat(end):
+        return True                        # outage finished
+    return False
+
+
+def entries_in_room(sb, room_id):
+    """Active-run classes currently placed in one room."""
+    runs = sb.table("timetable_runs").select("id").eq("is_active", True).execute().data
+    if not runs:
+        return []
+    return (sb.table("timetable_entries")
+              .select("id, session_id, day_of_week, start_slot, hours, "
+                      "sessions(classes(code, module_name))")
+              .eq("run_id", runs[0]["id"]).eq("room_id", room_id).execute().data)
