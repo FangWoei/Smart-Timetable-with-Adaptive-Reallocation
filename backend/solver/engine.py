@@ -28,6 +28,7 @@ def solve(data, time_limit=10, seed=None):
     lessons = data["lessons"]
     by_id = {l["id"]: l for l in lessons}
     size = {l["id"]: class_size(l, groups) for l in lessons}
+    pinned = data.get("pinned", {})
 
     model = cp_model.CpModel()
     x = {}
@@ -36,9 +37,16 @@ def solve(data, time_limit=10, seed=None):
 
     # Switches: one per (lesson, day, start slot, suitable room)
     for l in lessons:
+        pin = pinned.get(l["id"])
         for d in range(len(DAYS)):
+            if pin and pin["day"] - 1 != d:
+                continue
             for s in range(SLOTS - l["hours"] + 1):
+                if pin and pin["start_slot"] - 1 != s:
+                    continue
                 for r, info in rooms.items():
+                    if pin and pin["room"] != r:
+                        continue
                     if info["cap"] < size[l["id"]]:
                         continue
                     if l["lab"] != (info["type"] == "lab"):
