@@ -1,27 +1,39 @@
 {
   "rooms": {
+    "HALL1": {
+      "cap": 80,
+      "type": "lecture"
+    },
+    "HALL2": {
+      "cap": 80,
+      "type": "lecture"
+    },
     "R1": {
-      "cap": 30,
+      "cap": 50,
       "type": "lecture"
     },
     "R2": {
-      "cap": 30,
+      "cap": 50,
       "type": "lecture"
     },
     "R3": {
-      "cap": 30,
+      "cap": 40,
       "type": "lecture"
     },
     "R4": {
-      "cap": 30,
+      "cap": 40,
       "type": "lecture"
     },
     "LAB1": {
-      "cap": 30,
+      "cap": 40,
       "type": "lab"
     },
     "LAB2": {
-      "cap": 30,
+      "cap": 40,
+      "type": "lab"
+    },
+    "LAB3": {
+      "cap": 36,
       "type": "lab"
     }
   },
