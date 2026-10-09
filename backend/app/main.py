@@ -14,8 +14,10 @@ from db.calendar import (
 )
 
 from db.repository import (
-    get_active_timetable, get_client, get_entry, get_pins, list_groups,
-    list_runs, load_input, log_action, move_entry, save_run, seed, set_lock,create_room, entries_in_room, get_room, list_rooms, soft_delete_room, update_room,
+    apply_moves, create_room, entries_in_room, get_active_timetable, get_client,
+    get_entry, get_pins, get_room, list_groups, list_rooms, list_runs,
+    load_input, log_action, move_entry, save_run, seed, set_lock,
+    soft_delete_room, update_room,
 )
 
 from importer.reader import parse_any as parse
@@ -24,6 +26,7 @@ from solver import engine as engine_v1
 from solver import engine_v2
 from solver.checker import check
 from solver.engine import SolverError
+from solver.reallocate import reallocate
 
 ENGINES = {"engine": engine_v1, "engine_v2": engine_v2}
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024        # 2 MB is plenty for a course listing
@@ -371,3 +374,43 @@ def remove_room(room_id: int, sb=Depends(get_sb)):
         raise HTTPException(404, "Room not found")
     log_action(sb, "delete_room", {"room_id": room_id})
     return {"deleted": True, "room": row}
+
+# ---------- ADAPTIVE REALLOCATION ----------
+@app.post("/rooms/{room_id}/reallocate")
+def reallocate_room(room_id: int, apply: bool = False, sb=Depends(get_sb)):
+    """Find replacement rooms for classes in an unavailable room.
+
+    Times never change. Set apply=true to save the result.
+    """
+    room = get_room(sb, room_id)
+    if room is None:
+        raise HTTPException(404, "Room not found")
+
+    tt = get_active_timetable(sb)
+    if tt is None:
+        raise HTTPException(404, "No active timetable")
+
+    affected = [e["session_id"] for e in tt["entries"] if e["room"] == room["code"]]
+    if not affected:
+        return {"room": room["code"], "affected": 0, "moves": [], "unresolved": []}
+
+    data = load_input(sb)                       # excludes unavailable rooms
+    try:
+        result = reallocate(data, tt["entries"], affected)
+    except SolverError as e:
+        raise HTTPException(422, str(e))
+
+    if apply and result["moves"]:
+        apply_moves(sb, result["moves"])
+        log_action(sb, "reallocate", {
+            "room": room["code"], "moved": len(result["moves"]),
+            "unresolved": result["unresolved"],
+        })
+
+    return {
+        "room": room["code"],
+        "affected": len(affected),
+        "applied": bool(apply and result["moves"]),
+        "moves": result["moves"],
+        "unresolved": result["unresolved"],
+    }

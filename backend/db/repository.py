@@ -290,3 +290,18 @@ def entries_in_room(sb, room_id):
               .select("id, session_id, day_of_week, start_slot, hours, "
                       "sessions(classes(code, module_name))")
               .eq("run_id", runs[0]["id"]).eq("room_id", room_id).execute().data)
+
+def apply_moves(sb, moves):
+    """Write reallocation results into the active run."""
+    room_ids = _id_map(sb, "rooms", "code")
+    runs = sb.table("timetable_runs").select("id").eq("is_active", True).execute().data
+    if not runs:
+        raise ValueError("No active timetable")
+    run_id = runs[0]["id"]
+
+    for m in moves:
+        sb.table("timetable_entries").update(
+            {"room_id": room_ids[m["to_room"]]}
+        ).eq("run_id", run_id).eq("session_id", int(m["lesson_id"])).execute()
+    return len(moves)
+
