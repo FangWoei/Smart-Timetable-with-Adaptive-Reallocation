@@ -1,3 +1,4 @@
+// src/pages/ImportData/ImportDataPage.jsx
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
@@ -13,6 +14,7 @@ const MANUAL_CATEGORIES = [
   { id: 'group', label: 'Group / intake', desc: 'Add groups/intakes', badge: 'GR' },
   { id: 'lecturer', label: 'Lecturer', desc: 'Add lecturers', badge: 'LC' },
   { id: 'classroom', label: 'Classroom', desc: 'Add classrooms', badge: 'RM' },
+  { id: 'rooms', label: 'Rooms & Maintenance', desc: 'Add rooms & status', badge: 'RO' },
   { id: 'student', label: 'Student', desc: 'Add students', badge: 'ST' },
 ];
 
@@ -96,10 +98,10 @@ function BulkImport() {
         <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
           <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
           <ul className="mt-2 list-disc space-y-1.5 pl-4">
-            <li>Intake group, level and head count</li>
-            <li>Course code, name and hours per week</li>
-            <li>Lecturer name and full-time / part-time</li>
-            <li className="text-ink-4">Student names are skipped</li>
+            <li>Intake group, level and head count[cite: 8]</li>
+            <li>Course code, name and hours per week[cite: 8]</li>
+            <li>Lecturer name and full-time / part-time[cite: 8]</li>
+            <li className="text-ink-4">Student names are skipped[cite: 8]</li>
           </ul>
         </aside>
       </div>
@@ -217,11 +219,17 @@ function ManualImport() {
 
   const [roomCode, setRoomCode] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('40');
-  const [roomType, setRoomType] = useState('Standard Lecture Room');
+  const [roomType, setRoomType] = useState('Standard room');
+
+  // Rooms 标签页状态
+  const [customRoomName, setCustomRoomName] = useState('');
+  const [customRoomType, setCustomRoomType] = useState('Standard room');
+  const [customRoomCap, setCustomRoomCap] = useState('40');
+  const [customRoomStatus, setCustomRoomStatus] = useState('available');
 
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState(''); // 新增：学生邮箱 State
+  const [studentEmail, setStudentEmail] = useState(''); 
   const [studentGroup, setStudentGroup] = useState('DB2601A');
 
   const [addedRecords, setAddedRecords] = useState([]);
@@ -273,17 +281,26 @@ function ManualImport() {
         detail: `${roomType} (Cap: ${roomCapacity})`,
       };
       setRoomCode('');
+    } else if (category === 'rooms') {
+      if (!customRoomName.trim()) return;
+      newRec = {
+        id: Date.now(),
+        type: 'Venue Status',
+        name: customRoomName,
+        detail: `${customRoomType} · Cap: ${customRoomCap} · Status: ${customRoomStatus}`,
+      };
+      setCustomRoomName('');
     } else if (category === 'student') {
       if (!studentId.trim() || !studentName.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Student',
         name: `${studentId} — ${studentName}`,
-        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`, // 包含邮箱显示
+        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`,
       };
       setStudentId('');
       setStudentName('');
-      setStudentEmail(''); // 清空邮箱输入框
+      setStudentEmail('');
     }
 
     if (newRec) {
@@ -297,6 +314,7 @@ function ManualImport() {
       case 'group': return 'Add group';
       case 'lecturer': return 'Add lecturer';
       case 'classroom': return 'Add classroom';
+      case 'rooms': return 'Add room & status';
       case 'student': return 'Add student';
       default: return 'Add record';
     }
@@ -395,9 +413,9 @@ function ManualImport() {
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room type</label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
-                      <option>Standard</option>
-                      <option>Computer Lab</option>
-                      <option>Auditorium</option>
+                      <option value="Standard room">Standard room</option>
+                      <option value="Computer lab">Computer lab</option>
+                      <option value="Lecture hall">Lecture hall</option>
                     </select>
                   </div>
                   <div>
@@ -599,11 +617,66 @@ function ManualImport() {
                     onChange={(e) => setRoomType(e.target.value)}
                     className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                   >
-                    <option>Standard Lecture Room</option>
-                    <option>Computer Lab</option>
-                    <option>Auditorium</option>
-                    <option>Workshop / Studio</option>
+                    <option value="Standard room">Standard room</option>
+                    <option value="Computer lab">Computer lab</option>
+                    <option value="Lecture hall">Lecture hall</option>
                   </select>
+                </div>
+              </>
+            )}
+
+            {category === 'rooms' && (
+              <>
+                <h2 className="text-sm font-bold text-ink">Add room & maintenance status</h2>
+                <p className="text-xs text-ink-3">Configure a room and set its operational or maintenance state</p>
+
+                <div className="mt-5 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room name / code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. BR-105"
+                      value={customRoomName}
+                      onChange={(e) => setCustomRoomName(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Capacity (Seats)</label>
+                    <input
+                      type="number"
+                      value={customRoomCap}
+                      onChange={(e) => setCustomRoomCap(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room Type</label>
+                    <select
+                      value={customRoomType}
+                      onChange={(e) => setCustomRoomType(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    >
+                      <option value="Standard room">Standard room</option>
+                      <option value="Computer lab">Computer lab</option>
+                      <option value="Lecture hall">Lecture hall</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Operational Status</label>
+                    <select
+                      value={customRoomStatus}
+                      onChange={(e) => setCustomRoomStatus(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    >
+                      <option value="available">Available (Normal)</option>
+                      <option value="maintenance">Under Maintenance</option>
+                      <option value="out_of_service">Out of Service</option>
+                    </select>
+                  </div>
                 </div>
               </>
             )}
