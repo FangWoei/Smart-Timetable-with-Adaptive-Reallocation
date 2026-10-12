@@ -99,9 +99,20 @@ const SUBJECTS = [
   },
 ]
 
+// 模拟教室数据（含维修状态 status）
+const ROOMS = [
+  { id: 'BR-101', name: 'BR-101', type: 'Standard room', capacity: 40, status: 'available' },
+  { id: 'BR-104', name: 'BR-104', type: 'Standard room', capacity: 45, status: 'available' },
+  { id: 'BR-305', name: 'BR-305', type: 'Lecture hall', capacity: 80, status: 'maintenance' },
+  { id: 'BR-308', name: 'BR-308', type: 'Standard room', capacity: 40, status: 'available' },
+  { id: 'LAB-01', name: 'LAB-01', type: 'Computer lab', capacity: 30, status: 'available' },
+  { id: 'LAB-02', name: 'LAB-02', type: 'Computer lab', capacity: 30, status: 'out_of_service' },
+]
+
 const TABS = [
   { id: 'lecturers', label: 'Lecturers' },
   { id: 'subjects', label: 'Subjects' },
+  { id: 'rooms', label: 'Rooms' },
 ]
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr']
@@ -581,6 +592,192 @@ function SubjectsTab() {
   )
 }
 
+// 教室子组件 (RoomsTab) —— 支持设置维修状态
+function RoomsTab() {
+  const [query, setQuery] = useState('')
+  const [rooms, setRooms] = useState(ROOMS)
+  const [selectedId, setSelectedId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+
+  useEffect(() => {
+    if (selectedId !== null) {
+      const found = rooms.find(r => r.id === selectedId)
+      setEditForm(found ? JSON.parse(JSON.stringify(found)) : null)
+    } else {
+      setEditForm(null)
+    }
+  }, [selectedId, rooms])
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return rooms.filter((r) => !q || r.name.toLowerCase().includes(q) || r.type.toLowerCase().includes(q))
+  }, [query, rooms])
+
+  const handleSave = async () => {
+    if (!editForm) return
+    try {
+      setRooms(prev => prev.map(r => r.id === editForm.id ? editForm : r))
+      alert(`Successfully updated room: ${editForm.name}`)
+      setSelectedId(null)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to save changes')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!editForm) return
+    if (!confirm(`Are you sure you want to delete ${editForm.name}?`)) return
+    try {
+      setRooms(prev => prev.filter(r => r.id !== editForm.id))
+      setSelectedId(null)
+      alert('Room deleted successfully')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete room')
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 gap-4">
+      <div className="min-w-0 flex-1 flex flex-col">
+        <div className="mb-3 flex items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search rooms…"
+            aria-label="Search rooms"
+            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+          />
+        </div>
+
+        <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-panel text-[11px] text-ink-4">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Room Name</th>
+                <th className="px-3 py-2 font-semibold">Type</th>
+                <th className="px-3 py-2 font-semibold">Capacity</th>
+                <th className="px-3 py-2 font-semibold">Status</th>
+                <th className="px-3 py-2 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const active = r.id === selectedId
+                let badgeTone = 'ok'
+                let statusLabel = 'Available'
+                if (r.status === 'maintenance') {
+                  badgeTone = 'warn'
+                  statusLabel = 'Under Maintenance'
+                } else if (r.status === 'out_of_service') {
+                  badgeTone = 'danger'
+                  statusLabel = 'Out of Service'
+                }
+
+                return (
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelectedId(r.id)}
+                    className={`cursor-pointer border-t border-line-2 transition-colors ${active ? 'bg-navy-50' : 'hover:bg-panel'}`}
+                  >
+                    <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
+                    <td className="px-3 py-2 text-ink-2">{r.type}</td>
+                    <td className="px-3 py-2 text-ink-2">{r.capacity} seats</td>
+                    <td className="px-3 py-2">
+                      <Badge tone={badgeTone}>{statusLabel}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button 
+                        type="button" 
+                        onClick={(e) => { 
+                          e.stopPropagation() 
+                          setSelectedId(r.id) 
+                        }}
+                        className="rounded border border-line bg-white px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="py-8 text-center text-ink-4">No rooms found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-ink-4">{rooms.length} rooms total · showing {rows.length}</p>
+      </div>
+
+      {selectedId !== null && editForm && (
+        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-white p-4 lg:block overflow-y-auto max-h-[85vh] shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-ink">Edit room</h2>
+            <button type="button" onClick={() => setSelectedId(null)} className="text-ink-4 hover:text-ink text-sm font-bold px-1">✕</button>
+          </div>
+          
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Room Code / Name
+            <input 
+              value={editForm.name} 
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value, id: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500" 
+            />
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Room Type
+            <select
+              value={editForm.type}
+              onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="Standard room">Standard room</option>
+              <option value="Computer lab">Computer lab</option>
+              <option value="Lecture hall">Lecture hall</option>
+            </select>
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Capacity (Seats)
+            <input 
+              type="number"
+              value={editForm.capacity} 
+              onChange={(e) => setEditForm({ ...editForm, capacity: Number(e.target.value) })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500" 
+            />
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Operational Status
+            <select
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="available">Available (Normal)</option>
+              <option value="maintenance">Under Maintenance</option>
+              <option value="out_of_service">Out of Service</option>
+            </select>
+          </label>
+
+          <div className="mt-5 flex items-center justify-between border-t border-line pt-3">
+            <button type="button" onClick={handleDelete} className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors">Delete</button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setSelectedId(null)} className="h-[28px] rounded border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">Cancel</button>
+              <button type="button" onClick={handleSave} className="h-[28px] rounded bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors">Save changes</button>
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
+  )
+}
+
 // 主页面组件
 export default function ManagePeoplePage() {
   const [params, setParams] = useSearchParams()
@@ -596,6 +793,8 @@ export default function ManagePeoplePage() {
           <LecturersTab />
         ) : tab === 'subjects' ? (
           <SubjectsTab />
+        ) : tab === 'rooms' ? (
+          <RoomsTab />
         ) : (
           <div className="rounded-md border border-dashed border-line-strong bg-white p-8 text-center text-xs text-ink-4">
             {TABS.find((t) => t.id === tab)?.label} management module coming soon.
