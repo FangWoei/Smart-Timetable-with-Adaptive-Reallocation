@@ -1,3 +1,4 @@
+// src/layouts/TopBar.jsx
 import { NavLink } from 'react-router-dom'
 import Logo from '../components/Logo.jsx'
 import { NAV_ITEMS } from '../nav.js'
@@ -5,36 +6,19 @@ import { NAV_ITEMS } from '../nav.js'
 const MENUS = ['File', 'Edit', 'Data', 'Constraints', 'Timetable', 'View', 'Help']
 
 export default function TopBar({ variant = 'workspace', user, fileName, dirty }) {
-  const light = variant === 'home'
-
-  const tabClass = ({ isActive }) =>
-    [
-      'relative flex h-11 items-center px-1 text-[13px] transition-colors',
-      'after:absolute after:inset-x-0 after:bottom-[7px] after:h-[3px] after:rounded-full',
-      light
-        ? isActive
-          ? 'font-semibold text-navy-700 after:bg-navy-700'
-          : 'text-ink-3 hover:text-ink'
-        : isActive
-          ? 'font-semibold text-white after:bg-white'
-          : 'text-navy-200 hover:text-white',
-    ].join(' ')
-
   return (
-    <header
-      className={[
-        'flex h-11 shrink-0 items-center gap-5 px-3',
-        light ? 'border-b border-line bg-white' : 'bg-navy-900',
-      ].join(' ')}
-    >
-      <Logo bordered={light} />
+    <header className="flex h-12 shrink-0 items-center gap-6 border-b border-line bg-white px-5 shadow-xs">
+      {/* 进一步加大外层容器的宽高和内部图片的最大高度限制 */}
+      <div className="flex items-center [&>div]:h-[42px] [&>div]:w-[210px] [&_img]:max-h-[36px]">
+        <Logo bordered={false} />
+      </div>
 
-      <span className={`text-sm font-semibold ${light ? 'text-navy-700' : 'text-white'}`}>
-        {light ? 'Scheduler' : 'Timetable Scheduler'}
+      <span className="text-sm font-bold tracking-tight text-navy-900">
+        Timetable Scheduler
       </span>
 
       {fileName && (
-        <div className="hidden items-center gap-2 text-[13px] text-navy-200 lg:flex">
+        <div className="hidden items-center gap-2 text-[13px] text-ink-3 lg:flex">
           <span>{fileName}</span>
           {dirty && (
             <span className="flex items-center gap-1.5 text-xs">
@@ -45,10 +29,30 @@ export default function TopBar({ variant = 'workspace', user, fileName, dirty })
         </div>
       )}
 
-      <nav className="ml-2 flex items-center gap-5" aria-label="Sections">
+      {/* 导航栏：带有文字向上滚动 Hover 动效 */}
+      <nav className="ml-2 flex items-center gap-6" aria-label="Sections">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={tabClass}>
-            {item.label}
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              [
+                'relative flex h-6 items-center px-1 text-[13px] overflow-hidden group transition-colors font-medium',
+                isActive ? 'text-navy-700 font-semibold' : 'text-ink-3 hover:text-ink',
+              ].join(' ')
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <span className="block group-hover:-translate-y-full transition-transform duration-300">
+                  {item.label}
+                </span>
+                <span className="block absolute top-full left-1 group-hover:translate-y-[-100%] transition-transform duration-300">
+                  {item.label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -59,7 +63,7 @@ export default function TopBar({ variant = 'workspace', user, fileName, dirty })
             <button
               key={m}
               type="button"
-              className="rounded px-2 py-1 text-[13px] text-navy-100 hover:bg-white/10 hover:text-white"
+              className="rounded px-2.5 py-1 text-[13px] text-ink-2 hover:bg-panel hover:text-ink transition-colors"
             >
               {m}
             </button>
@@ -67,14 +71,15 @@ export default function TopBar({ variant = 'workspace', user, fileName, dirty })
         </div>
       )}
 
-      <div className="ml-auto flex items-center gap-2.5">
+      {/* 右侧用户信息 */}
+      <div className="ml-auto flex items-center gap-3">
         <div className="hidden text-right sm:block">
-          <div className={`text-xs ${light ? 'font-medium text-ink' : 'text-navy-100'}`}>{user.name}</div>
-          {light && user.role && <div className="text-[11px] text-ink-4">{user.role}</div>}
+          <div className="text-xs font-semibold text-ink">{user.name}</div>
+          {user.role && <div className="text-[11px] text-ink-4">{user.role}</div>}
         </div>
         <span
           aria-hidden
-          className="flex size-6 items-center justify-center rounded-full bg-navy-500 text-[10px] font-semibold text-white"
+          className="flex size-7 items-center justify-center rounded-full bg-navy-700 text-[10px] font-bold text-white shadow-xs"
         >
           {user.initials}
         </span>
