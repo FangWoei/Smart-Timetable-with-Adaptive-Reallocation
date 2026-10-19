@@ -7,30 +7,14 @@ const MENUS = ['File', 'Edit', 'Data', 'Constraints', 'Timetable', 'View', 'Help
 
 export default function TopBar({ variant = 'workspace', user, fileName, dirty }) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-6 border-b border-line bg-white px-5 shadow-xs">
-      {/* 进一步加大外层容器的宽高和内部图片的最大高度限制 */}
-      <div className="flex items-center [&>div]:h-[42px] [&>div]:w-[210px] [&_img]:max-h-[36px]">
+    <header className="flex h-14 shrink-0 items-center border-b border-line bg-white px-5 shadow-xs">
+      {/* 放大后的 Logo 容器 */}
+      <div className="flex items-center [&>div]:h-[50px] [&>div]:w-[250px] [&_img]:max-h-[44px]">
         <Logo bordered={false} />
       </div>
 
-      <span className="text-sm font-bold tracking-tight text-navy-900">
-        Timetable Scheduler
-      </span>
-
-      {fileName && (
-        <div className="hidden items-center gap-2 text-[13px] text-ink-3 lg:flex">
-          <span>{fileName}</span>
-          {dirty && (
-            <span className="flex items-center gap-1.5 text-xs">
-              <span className="size-2 rounded-full bg-warn" />
-              unsaved changes
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* 导航栏：带有文字向上滚动 Hover 动效 */}
-      <nav className="ml-2 flex items-center gap-6" aria-label="Sections">
+      {/* 使用负边距 -ml-2 强行把导航栏拉近 Logo，你可以自己把数字改成 -ml-3 或 -ml-4 调整得更近 */}
+      <nav className="-ml-19 flex items-center gap-6" aria-label="Sections">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -56,6 +40,18 @@ export default function TopBar({ variant = 'workspace', user, fileName, dirty })
           </NavLink>
         ))}
       </nav>
+
+      {fileName && (
+        <div className="ml-6 hidden items-center gap-2 text-[13px] text-ink-3 lg:flex">
+          <span>{fileName}</span>
+          {dirty && (
+            <span className="flex items-center gap-1.5 text-xs">
+              <span className="size-2 rounded-full bg-warn" />
+              unsaved changes
+            </span>
+          )}
+        </div>
+      )}
 
       {variant === 'workspace' && fileName && (
         <div className="hidden items-center gap-1 2xl:flex">
