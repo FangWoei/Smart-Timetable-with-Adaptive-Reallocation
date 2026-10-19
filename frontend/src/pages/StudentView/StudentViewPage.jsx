@@ -1,3 +1,4 @@
+// src/pages/StudentView/StudentViewPage.jsx
 import { useMemo, useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import { STUDENTS } from '../../data/people.js'
@@ -8,146 +9,65 @@ export default function StudentViewPage() {
   const [selectedId, setSelectedId] = useState('2401019')
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true)
 
+  // 1. 扩展/模拟多个学生的 Retake 状态，方便验证批量导出功能
+  const allStudentsList = useMemo(() => {
+    return STUDENTS.map(s => {
+      if (['2401019', '2401011', '2401013'].includes(s.id)) {
+        return { ...s, retake: true }
+      }
+      return s
+    })
+  }, [])
+
+  // 2. 模拟每个学生的个性化时间表数据
   const timetableData = {
     '2401019': {
       programme: 'DIPLOMA IN BUSINESS (DB2601A)',
       semesterStart: '05/01/2026',
       semesterEnd: '24/04/2026',
       courses: [
-        {
-          id: 'c1',
-          name: 'Business Statistics',
-          day: 'MONDAY',
-          startSlot: 1, 
-          colSpan: 3,  
-          timeStr: '08:00 – 09:30',
-          room: 'BR-201',
-          instructor: 'Dr. John Doe',
-          startDate: '05/01/2026',
-          endDate: '20/04/2026',
-          tone: 'navy'
-        },
-        {
-          id: 'c2',
-          name: 'Afternoon Lab Session',
-          day: 'MONDAY',
-          startSlot: 13, 
-          colSpan: 4,  
-          timeStr: '14:00 – 16:00',
-          room: 'BR-205',
-          instructor: 'Tech Team',
-          startDate: '12/01/2026',
-          endDate: '20/04/2026',
-          tone: 'amber'
-        },
-        {
-          id: 'c3',
-          name: 'Marketing Principles',
-          day: 'TUESDAY',
-          startSlot: 4,  
-          colSpan: 4,  
-          timeStr: '09:30 – 11:30',
-          room: 'BR-105',
-          instructor: 'Prof. Jane Smith',
-          startDate: '06/01/2026',
-          endDate: '21/04/2026',
-          tone: 'emerald'
-        },
-        {
-          id: 'c4',
-          name: 'Accounting II',
-          day: 'WEDNESDAY',
-          startSlot: 1,  
-          colSpan: 3,  
-          timeStr: '08:00 – 09:30',
-          room: 'BR-104',
-          instructor: 'Dr. Wang',
-          startDate: '07/01/2026',
-          endDate: '22/04/2026',
-          tone: 'amber',
-          isRetake: true
-        },
-        {
-          id: 'c5',
-          name: 'Microeconomics',
-          day: 'WEDNESDAY',
-          startSlot: 5,  
-          colSpan: 3,  
-          timeStr: '09:30 – 11:00',
-          room: 'BR-104',
-          instructor: 'Dr. Wang',
-          startDate: '07/01/2026',
-          endDate: '22/04/2026',
-          tone: 'amber',
-          isRetake: true
-        },
-        {
-          id: 'c6',
-          name: 'Business Law',
-          day: 'THURSDAY',
-          startSlot: 2,  
-          colSpan: 4,  
-          timeStr: '08:30 – 10:30',
-          room: 'BR-308',
-          instructor: 'Mr. Alan Lee',
-          startDate: '08/01/2026',
-          endDate: '23/04/2026',
-          tone: 'purple'
-        },
-        {
-          id: 'c7',
-          name: 'Accounting Catchup',
-          day: 'THURSDAY',
-          startSlot: 11, 
-          colSpan: 4,  
-          timeStr: '13:00 – 15:00',
-          room: 'BR-203',
-          instructor: 'Dr. Wang',
-          startDate: '08/01/2026',
-          endDate: '23/04/2026',
-          tone: 'amber'
-        },
-        {
-          id: 'c8',
-          name: 'Academic English',
-          day: 'FRIDAY',
-          startSlot: 1,  
-          colSpan: 4,  
-          timeStr: '08:00 – 10:00',
-          room: 'BR-112',
-          instructor: 'Ms. Sarah',
-          startDate: '09/01/2026',
-          endDate: '24/04/2026',
-          tone: 'blue'
-        },
-        {
-          id: 'c9',
-          name: 'Evening Seminar',
-          day: 'FRIDAY',
-          startSlot: 19, 
-          colSpan: 3,  
-          timeStr: '17:00 – 18:30',
-          room: 'Hall B',
-          instructor: 'Guest',
-          startDate: '09/01/2026',
-          endDate: '24/04/2026',
-          tone: 'emerald'
-        }
+        { id: 'c1', name: 'Business Statistics', day: 'MONDAY', startSlot: 1, colSpan: 3, timeStr: '08:00 – 09:30', room: 'BR-201', instructor: 'Dr. John Doe', startDate: '05/01/2026', endDate: '20/04/2026', tone: 'navy' },
+        { id: 'c2', name: 'Afternoon Lab Session', day: 'MONDAY', startSlot: 13, colSpan: 4, timeStr: '14:00 – 16:00', room: 'BR-205', instructor: 'Tech Team', startDate: '12/01/2026', endDate: '20/04/2026', tone: 'amber' },
+        { id: 'c3', name: 'Marketing Principles', day: 'TUESDAY', startSlot: 4, colSpan: 4, timeStr: '09:30 – 11:30', room: 'BR-105', instructor: 'Prof. Jane Smith', startDate: '06/01/2026', endDate: '21/04/2026', tone: 'emerald' },
+        { id: 'c4', name: 'Accounting II', day: 'WEDNESDAY', startSlot: 1, colSpan: 3, timeStr: '08:00 – 09:30', room: 'BR-104', instructor: 'Dr. Wang', startDate: '07/01/2026', endDate: '22/04/2026', tone: 'amber', isRetake: true },
+        { id: 'c5', name: 'Microeconomics', day: 'WEDNESDAY', startSlot: 5, colSpan: 3, timeStr: '09:30 – 11:00', room: 'BR-104', instructor: 'Dr. Wang', startDate: '07/01/2026', endDate: '22/04/2026', tone: 'amber', isRetake: true },
+        { id: 'c6', name: 'Business Law', day: 'THURSDAY', startSlot: 2, colSpan: 4, timeStr: '08:30 – 10:30', room: 'BR-308', instructor: 'Mr. Alan Lee', startDate: '08/01/2026', endDate: '23/04/2026', tone: 'purple' },
+        { id: 'c7', name: 'Accounting Catchup', day: 'THURSDAY', startSlot: 11, colSpan: 4, timeStr: '13:00 – 15:00', room: 'BR-203', instructor: 'Dr. Wang', startDate: '08/01/2026', endDate: '23/04/2026', tone: 'amber' },
+        { id: 'c8', name: 'Academic English', day: 'FRIDAY', startSlot: 1, colSpan: 4, timeStr: '08:00 – 10:00', room: 'BR-112', instructor: 'Ms. Sarah', startDate: '09/01/2026', endDate: '24/04/2026', tone: 'blue' },
+        { id: 'c9', name: 'Evening Seminar', day: 'FRIDAY', startSlot: 19, colSpan: 3, timeStr: '17:00 – 18:30', room: 'Hall B', instructor: 'Guest', startDate: '09/01/2026', endDate: '24/04/2026', tone: 'emerald' }
+      ]
+    },
+    '2401011': {
+      programme: 'DIPLOMA IN BUSINESS (DB2601A)',
+      semesterStart: '05/01/2026',
+      semesterEnd: '24/04/2026',
+      courses: [
+        { id: 'c11_1', name: 'Business Law (Retake)', day: 'MONDAY', startSlot: 4, colSpan: 4, timeStr: '09:30 – 11:30', room: 'BR-308', instructor: 'Mr. Alan Lee', startDate: '05/01/2026', endDate: '20/04/2026', tone: 'amber', isRetake: true },
+        { id: 'c11_2', name: 'Marketing Principles', day: 'TUESDAY', startSlot: 4, colSpan: 4, timeStr: '09:30 – 11:30', room: 'BR-105', instructor: 'Prof. Jane Smith', startDate: '06/01/2026', endDate: '21/04/2026', tone: 'emerald' },
+        { id: 'c11_3', name: 'Academic English', day: 'FRIDAY', startSlot: 1, colSpan: 4, timeStr: '08:00 – 10:00', room: 'BR-112', instructor: 'Ms. Sarah', startDate: '09/01/2026', endDate: '24/04/2026', tone: 'blue' }
+      ]
+    },
+    '2401013': {
+      programme: 'DIPLOMA IN BUSINESS (DB2601A)',
+      semesterStart: '05/01/2026',
+      semesterEnd: '24/04/2026',
+      courses: [
+        { id: 'c13_1', name: 'Accounting I (Retake)', day: 'TUESDAY', startSlot: 1, colSpan: 3, timeStr: '08:00 – 09:30', room: 'BR-104', instructor: 'Dr. Wang', startDate: '06/01/2026', endDate: '21/04/2026', tone: 'amber', isRetake: true },
+        { id: 'c13_2', name: 'Business Statistics', day: 'MONDAY', startSlot: 1, colSpan: 3, timeStr: '08:00 – 09:30', room: 'BR-201', instructor: 'Dr. John Doe', startDate: '05/01/2026', endDate: '20/04/2026', tone: 'navy' }
       ]
     }
   }
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return STUDENTS.filter(
+    return allStudentsList.filter(
       (s) => (!retakeOnly || s.retake) && (!q || s.id.includes(q) || s.name.toLowerCase().includes(q)),
     )
-  }, [query, retakeOnly])
+  }, [query, retakeOnly, allStudentsList])
 
-  const student = STUDENTS.find((s) => s.id === selectedId) || STUDENTS[0]
+  const student = allStudentsList.find((s) => s.id === selectedId) || allStudentsList[0]
   const currentTimetable = timetableData[student.id] || timetableData['2401019']
 
-  // 将下午时间全部规范为 24 小时制 (13:00 开始)
   const timeSlots = [
     '08:00–08:30', '08:30–09:00', '09:00–09:30', '09:30–10:00',
     '10:00–10:30', '10:30–11:00', '11:00–11:30', '11:30–12:00',
@@ -159,32 +79,85 @@ export default function StudentViewPage() {
 
   const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
+  // 批量依次导出所有 Retake 学生独立的 PDF 文件
+  const handleBatchExportRetakeFiles = () => {
+    const retakeStudents = allStudentsList.filter(s => s.retake)
+    if (retakeStudents.length === 0) {
+      alert("No retake students found.")
+      return
+    }
+
+    if (confirm(`Ready to batch export individual PDFs for ${retakeStudents.length} retake students?`)) {
+      retakeStudents.forEach((s, index) => {
+        setTimeout(() => {
+          setSelectedId(s.id)
+          setTimeout(() => {
+            const originalTitle = document.title
+            const safeName = s.name.replace(/[^a-zA-Z0-9]/g, '_')
+            document.title = `${safeName}_${s.id}_Retake_Timetable`
+            window.print()
+            setTimeout(() => {
+              document.title = originalTitle
+            }, 1000)
+          }, 300)
+        }, index * 1200) // 每隔 1.2 秒依次触发每个学生的打印下载弹窗
+      })
+    }
+  }
+
+  const retakeCount = allStudentsList.filter(s => s.retake).length
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-panel">
+      {/* 打印专用 CSS：隐藏侧边栏与顶部栏 */}
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 10mm;
+          }
+          header {
+            display: none !important;
+          }
+          .print-hide-id {
+            display: none !important;
+          }
+        }
+      `}</style>
+
       {/* 顶部操作与筛选栏 */}
-      <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-line bg-white px-4">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by student ID or name…"
-          aria-label="Search students"
-          className="h-[30px] w-64 rounded border border-line bg-panel px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
-        />
-        <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer select-none">
-          <input 
-            type="checkbox" 
-            checked={retakeOnly} 
-            onChange={(e) => setRetakeOnly(e.target.checked)} 
-            className="rounded border-line-strong text-navy-700 focus:ring-navy-500"
+      <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-line bg-white px-4 print:hidden">
+        <div className="flex items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by student ID or name…"
+            aria-label="Search students"
+            className="h-[30px] w-64 rounded border border-line bg-panel px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
           />
-          Retake students only
-        </label>
-        <div className="ml-auto flex gap-2">
+          <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              checked={retakeOnly} 
+              onChange={(e) => setRetakeOnly(e.target.checked)} 
+              className="rounded border-line-strong text-navy-700 focus:ring-navy-500"
+            />
+            Retake students only
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-3 text-[13px] font-medium text-ink-2 hover:bg-panel">
             Bulk-assign retakes
           </button>
-          <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-3 text-[13px] font-medium text-ink-2 hover:bg-panel">
-            Export student list
+          
+          {/* 只保留唯一的批量导出按钮 */}
+          <button 
+            type="button" 
+            onClick={handleBatchExportRetakeFiles}
+            className="h-[30px] rounded border border-amber-500 bg-amber-50 px-3 text-[13px] font-semibold text-amber-900 hover:bg-amber-100 flex items-center gap-1.5 shadow-xs transition-colors"
+          >
+            <span>Export All Retake PDFs ({retakeCount})</span>
           </button>
         </div>
       </div>
@@ -192,9 +165,9 @@ export default function StudentViewPage() {
       {/* 主体布局 */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* 左侧：学生名单侧边栏 */}
-        <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-white">
+        <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-white print:hidden">
           <div className="px-3 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-            Students — DB2601A ({STUDENTS.length})
+            Students — DB2601A ({allStudentsList.length})
           </div>
           <ul className="min-h-0 flex-1 overflow-y-auto divide-y divide-line-2">
             {list.map((s) => {
@@ -220,24 +193,24 @@ export default function StudentViewPage() {
             {list.length === 0 && <li className="px-4 py-3 text-xs text-ink-4">No students match</li>}
           </ul>
           <div className="border-t border-line-2 px-3 py-2.5 text-[11px] text-ink-4 bg-white flex justify-between items-center">
-            <span>18 students</span>
-            <span className="font-medium text-amber-800">3 on retake</span>
+            <span>{allStudentsList.length} students</span>
+            <span className="font-medium text-amber-800">{retakeCount} on retake</span>
           </div>
         </aside>
 
-        {/* 中间：类教务大表网格课表 */}
-        <main className="min-w-0 flex-1 overflow-y-auto p-5 space-y-5">
+        {/* 中间：纯时间表主体区域 */}
+        <main className="min-w-0 flex-1 overflow-y-auto p-5 space-y-5 print:p-0 print:overflow-visible">
           {student && (
             <>
               {/* 学生基础信息头 */}
-              <div className="flex items-start justify-between bg-white p-4 rounded-lg border border-line shadow-xs">
+              <div className="flex items-start justify-between bg-white p-4 rounded-lg border border-line shadow-xs print:border-none print:shadow-none print:p-0 print:mb-2">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">Student ID {student.id}</p>
+                  <p className="print-hide-id text-[11px] font-semibold uppercase tracking-wide text-ink-4">Student ID {student.id}</p>
                   <h1 className="text-xl font-bold text-ink mt-0.5">{student.name}</h1>
                   <p className="text-xs text-ink-3 mt-1">Base group DB2601A · Diploma in Business, Year 1</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {student.retake && <span className="mt-1"><Badge tone="warn">Retaking 1 subject</Badge></span>}
+                <div className="flex items-center gap-3 print:hidden">
+                  {student.retake && <span className="mt-1"><Badge tone="warn">Retaking Subject</Badge></span>}
                   <button 
                     type="button"
                     onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
@@ -249,8 +222,8 @@ export default function StudentViewPage() {
               </div>
 
               {/* 教务风时间大表容器 */}
-              <div className="rounded-lg border border-line bg-white shadow-xs overflow-hidden">
-                <div className="grid grid-cols-2 border-b border-line bg-panel px-4 py-2.5 text-[11px] text-ink-3">
+              <div className="rounded-lg border border-line bg-white shadow-xs overflow-hidden print:border-slate-300 print:w-full">
+                <div className="grid grid-cols-2 border-b border-line bg-panel px-4 py-2.5 text-[11px] text-ink-3 print:bg-slate-100">
                   <div>
                     <span className="font-semibold text-ink">PROGRAMME:</span> {currentTimetable.programme}
                   </div>
@@ -259,13 +232,13 @@ export default function StudentViewPage() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[11px] text-ink min-w-[1800px]">
+                <div className="overflow-x-auto print:overflow-visible">
+                  <table className="w-full border-collapse text-[11px] text-ink min-w-[1800px] print:min-w-full print:text-[9px]">
                     <thead>
-                      <tr className="border-b border-line bg-panel font-semibold text-ink-3">
-                        <th className="border-r border-line p-2 text-left w-28 sticky left-0 bg-panel z-10">DAY / TIME</th>
+                      <tr className="border-b border-line bg-panel font-semibold text-ink-3 print:bg-slate-100">
+                        <th className="border-r border-line p-2 text-left w-28 sticky left-0 bg-panel z-10 print:bg-slate-100">DAY / TIME</th>
                         {timeSlots.map((slot, idx) => (
-                          <th key={idx} className="border-r border-line p-1.5 text-center w-24">{slot}</th>
+                          <th key={idx} className="border-r border-line p-1.5 text-center w-24 print:w-auto">{slot}</th>
                         ))}
                       </tr>
                     </thead>
@@ -274,7 +247,7 @@ export default function StudentViewPage() {
                         const dayCourses = currentTimetable.courses.filter(c => c.day === dayName)
                         
                         return (
-                          <tr key={dayName} className="hover:bg-panel/40 transition-colors h-16">
+                          <tr key={dayName} className="hover:bg-panel/40 transition-colors h-16 print:h-12">
                             <td className="border-r border-line p-2.5 font-bold bg-white sticky left-0 z-10 text-ink">{dayName}</td>
                             
                             {(() => {
@@ -300,14 +273,14 @@ export default function StudentViewPage() {
 
                                 cells.push(
                                   <td key={course.id} colSpan={course.colSpan} className={`border-r border-line p-1.5 align-middle ${toneClasses.split(' ')[0]}`}>
-                                    <div className={`rounded border ${toneClasses.split(' ')[1]} bg-white p-2 shadow-xs space-y-1`}>
+                                    <div className={`rounded border ${toneClasses.split(' ')[1]} bg-white p-2 shadow-xs space-y-1 print:p-1`}>
                                       <div className="flex justify-between items-center gap-2">
-                                        <p className={`font-bold ${toneClasses.split(' ')[2]} text-[11px] leading-tight`}>{course.name}</p>
-                                        <span className="text-[9px] text-ink-4 bg-panel px-1.5 py-0.5 rounded shrink-0 font-mono" title={`Active: ${course.startDate} to ${course.endDate}`}>
+                                        <p className={`font-bold ${toneClasses.split(' ')[2]} text-[11px] print:text-[9px] leading-tight`}>{course.name}</p>
+                                        <span className="text-[9px] print:text-[8px] text-ink-4 bg-panel px-1.5 py-0.5 rounded shrink-0 font-mono" title={`Active: ${course.startDate} to ${course.endDate}`}>
                                           {course.startDate.slice(0, 5)} ~ {course.endDate.slice(0, 5)}
                                         </span>
                                       </div>
-                                      <p className="text-[10px] text-ink-3">{course.instructor} · {course.room}</p>
+                                      <p className="text-[10px] print:text-[8px] text-ink-3">{course.instructor} · {course.room}</p>
                                     </div>
                                   </td>
                                 )
@@ -331,8 +304,8 @@ export default function StudentViewPage() {
                 </div>
               </div>
 
-              {/* 底部调整卡片 */}
-              <div className="rounded-lg border border-amber-300 bg-amber-50/70 p-4 space-y-3 shadow-xs">
+              {/* 底部调整卡片（打印时隐藏） */}
+              <div className="rounded-lg border border-amber-300 bg-amber-50/70 p-4 space-y-3 shadow-xs print:hidden">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">Retake: Microeconomics</h3>
@@ -372,9 +345,9 @@ export default function StudentViewPage() {
           )}
         </main>
 
-        {/* 右侧：Retake 队列与冲突侧边栏（可折叠） */}
+        {/* 右侧：Retake 队列与冲突侧边栏（打印时自动隐藏） */}
         {isRightSidebarOpen && (
-          <aside className="flex w-[280px] shrink-0 flex-col border-l border-line bg-white overflow-y-auto p-3.5 space-y-3.5">
+          <aside className="flex w-[280px] shrink-0 flex-col border-l border-line bg-white overflow-y-auto p-3.5 space-y-3.5 print:hidden">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-wide text-ink-4">Retake Queue</h2>
