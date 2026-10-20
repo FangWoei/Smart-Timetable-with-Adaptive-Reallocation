@@ -242,6 +242,18 @@ def list_rooms(sb, include_deleted=False):
         q = q.eq("is_deleted", False)
     return q.execute().data
 
+def list_classes(sb):
+    return (sb.table("classes")
+              .select("id, code, module_name, weekly_hours, session_length, "
+                      "students, needs_lab, lecturers(name), "
+                      "class_groups(intake_groups(code))")
+              .order("code").execute().data)
+
+
+def update_class(sb, class_id, data):
+    rows = sb.table("classes").update(data).eq("id", class_id).execute().data
+    return rows[0] if rows else None
+
 
 def get_room(sb, room_id):
     rows = sb.table("rooms").select(ROOM_FIELDS).eq("id", room_id).execute().data

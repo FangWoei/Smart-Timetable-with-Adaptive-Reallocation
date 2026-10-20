@@ -20,9 +20,10 @@ def main():
     p = argparse.ArgumentParser(description="Import a Course Listing CSV")
     p.add_argument("csv", type=Path)
     p.add_argument("--out", type=Path, help="write solver JSON here")
+    p.add_argument("--only", nargs="+", help="keep only these programme prefixes, e.g. BSCS BSSE BSAI")
     args = p.parse_args()
 
-    result = parse_any(args.csv)
+    result = parse_any(args.csv, programmes=args.only)
 
     print(f"{len(result['groups'])} intake groups, {len(result['classes'])} classes\n")
     for c in result["classes"]:

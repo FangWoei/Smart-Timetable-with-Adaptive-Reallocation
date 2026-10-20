@@ -158,7 +158,7 @@ def solve(data, time_limit=10, seed=None):
     pinned = data.get("pinned", {})
 
     for l in lessons:
-        if not any(_is_lab_room(i) == l["lab"] and i["cap"] >= size[l["id"]]
+        if not any(i["cap"] >= size[l["id"]] and (l["lab"] or i["type"] != "lab")
                    for i in rooms.values()):
             raise SolverError(f"No suitable room for {l['id']} {l['module']}")
 

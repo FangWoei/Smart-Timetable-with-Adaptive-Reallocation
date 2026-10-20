@@ -8,6 +8,7 @@ click==8.5.0
 colorama==0.4.6
 cryptography==50.0.1
 deprecation==2.1.0
+et_xmlfile==2.0.0
 fastapi==0.141.1
 h11==0.16.0
 h2==4.4.1
@@ -22,6 +23,7 @@ immutabledict==4.3.1
 iniconfig==2.3.0
 multidict==6.8.0
 numpy==2.5.3
+openpyxl==3.1.5
 ortools==9.15.6755
 packaging==26.3
 pandas==3.0.5
