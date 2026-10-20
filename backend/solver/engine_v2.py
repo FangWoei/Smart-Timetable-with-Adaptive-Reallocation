@@ -128,14 +128,19 @@ def assign_rooms(lessons, rooms, size, times, pinned, time_limit, seed):
         for r, info in rooms.items():
             if pin and pin["room"] != r:
                 continue
-            if _is_lab_room(info) != l["lab"] or info["cap"] < size[l["id"]]:
+            if info["cap"] < size[l["id"]]:
                 continue
+            if _is_lab_room(info) and not l["lab"]:
+                continue          # don't waste a lab on a lecture class
             v = model.new_bool_var(f"{l['id']}_{r}")
             y[l["id"], r] = v
             choices.append(v)
             for t in range(s, s + l["hours"]):
                 room_use[r, d, t].append(v)
-            costs.append((info["cap"] - size[l["id"]]) // 10 * v)
+            cost = (info["cap"] - size[l["id"]]) // 10
+            if l["lab"] and not _is_lab_room(info):
+                cost += 6      # lab class in a classroom: allowed, discouraged
+            costs.append(cost * v)
         model.add_exactly_one(choices)
 
     for vs in room_use.values():

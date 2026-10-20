@@ -42,7 +42,16 @@ def test_checker_catches_lecturer_clash(data, solve):
 
 
 def test_room_too_small_raises_error(data, solve):
+    # Lab classes may now fall back to classrooms, so shrinking only the lab
+    # no longer makes the problem impossible: shrink every room instead.
     bad = copy.deepcopy(data)
-    bad["rooms"]["LAB1"]["cap"] = 30
+    for room in bad["rooms"].values():
+        room["cap"] = 30
     with pytest.raises(SolverError):
         solve(bad)
+
+def test_lab_class_falls_back_to_classroom_when_no_lab(data, solve):
+    d = copy.deepcopy(data)
+    d["rooms"] = {c: r for c, r in d["rooms"].items() if r["type"] != "lab"}
+    result = solve(d)
+    assert check(d, result["entries"]) == []

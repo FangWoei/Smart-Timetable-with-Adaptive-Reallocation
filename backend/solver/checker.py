@@ -32,8 +32,6 @@ def check(data, entries):
 
         if room["cap"] < class_size(l, groups):
             problems.append(f"{lid}: {e['room']} too small")
-        if l["lab"] != (room["type"] == "lab"):
-            problems.append(f"{lid}: wrong room type {e['room']}")
 
         start = e["start_slot"]
         if start < 1 or start + l["hours"] - 1 > SLOTS:
