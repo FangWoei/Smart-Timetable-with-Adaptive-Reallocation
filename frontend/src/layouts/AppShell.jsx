@@ -13,9 +13,6 @@ export default function AppShell() {
       <TopBar
         variant={isHome ? 'home' : 'workspace'}
         user={USER}
-        // TODO: lift file name / unsaved state into shared state once the API is wired up
-        fileName={isGroupView ? 'Jan 2026 semester — draft 4' : undefined}
-        dirty={isGroupView}
       />
       <div className="flex min-h-0 flex-1 flex-col">
         <Outlet />

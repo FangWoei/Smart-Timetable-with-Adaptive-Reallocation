@@ -1,17 +1,16 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, Navigate } from 'react-router-dom'
 import AppShell from './layouts/AppShell.jsx'
-import HomePage from './pages/Home/HomePage.jsx'
 import GroupViewPage from './pages/GroupView/GroupViewPage.jsx'
 import StudentViewPage from './pages/StudentView/StudentViewPage.jsx'
 import ManagePeoplePage from './pages/ManagePeople/ManagePeoplePage.jsx'
 import ImportDataPage from './pages/ImportData/ImportDataPage.jsx'
 
-
 export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<HomePage />} />
+        {/* 将根路径直接重定向到 group-view */}
+        <Route index element={<Navigate to="/group-view" replace />} />
         <Route path="group-view" element={<GroupViewPage />} />
         <Route path="students" element={<StudentViewPage />} />
         <Route path="people" element={<ManagePeoplePage />} />
