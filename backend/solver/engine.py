@@ -49,8 +49,10 @@ def solve(data, time_limit=10, seed=None):
                         continue
                     if info["cap"] < size[l["id"]]:
                         continue
-                    if l["lab"] != (info["type"] == "lab"):
-                        continue
+                    if info["type"] == "lab" and not l["lab"]:
+                        continue           # don't waste a lab on a lecture class
+                    if l["lab"] and rooms[r]["type"] != "lab": 
+                        cost += 6          # lab class in a classroom: allowed, discouraged
                     v = model.new_bool_var(f"{l['id']}_{d}_{s}_{r}")
                     x[l["id"], d, s, r] = v
                     options[l["id"]].append(v)

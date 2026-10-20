@@ -29,7 +29,7 @@ from solver.engine import SolverError
 from solver.reallocate import reallocate
 
 ENGINES = {"engine": engine_v1, "engine_v2": engine_v2}
-MAX_UPLOAD_BYTES = 2 * 1024 * 1024        # 2 MB is plenty for a course listing
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 class HolidayIn(BaseModel):
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
@@ -101,17 +101,27 @@ class CheckRequest(BaseModel):
     entries: list[EntryIn]
 
 
+class ClassIn(BaseModel):
+    needs_lab: bool | None = None
+    weekly_hours: int | None = Field(default=None, ge=1, le=20)
+    session_length: int | None = Field(default=None, ge=1, le=4)
+    students: int | None = Field(default=None, ge=1, le=500)
+
+
+
+
 # ---------- HELPERS ----------
 async def _parse_upload(file: UploadFile):
     """Save the upload to a temp file, parse it, then delete it."""
-    if not file.filename.lower().endswith(".csv"):
-        raise HTTPException(400, "Please upload a .csv file")
+    if not file.filename.lower().endswith((".csv", ".xlsx", ".xlsm")):
+        raise HTTPException(400, "Please upload a .csv or .xlsx file")
 
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(400, "File is too large (max 2 MB)")
-
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+    
+    suffix = Path(file.filename).suffix.lower()
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(raw)
         path = Path(tmp.name)
     try:
@@ -414,3 +424,21 @@ def reallocate_room(room_id: int, apply: bool = False, sb=Depends(get_sb)):
         "moves": result["moves"],
         "unresolved": result["unresolved"],
     }
+
+@app.get("/classes")
+def read_classes(sb=Depends(get_sb)):
+    """All classes, for the subject-offering form."""
+    return list_classes(sb)
+
+
+@app.patch("/classes/{class_id}")
+def edit_class(class_id: int, c: ClassIn, sb=Depends(get_sb)):
+    """Programme Leader edits a class — e.g. ticking 'needs lab'."""
+    fields = {k: v for k, v in c.model_dump().items() if v is not None}
+    if not fields:
+        raise HTTPException(400, "Nothing to update")
+    row = update_class(sb, class_id, fields)
+    if row is None:
+        raise HTTPException(404, "Class not found")
+    log_action(sb, "update_class", {"class_id": class_id, **fields})
+    return row

@@ -44,6 +44,9 @@ def check(data, entries):
             problems.append(f"{cid}: two sessions on day {e['day']}")
         class_days[cid].add(e["day"])
 
+        if not l["lab"] and room["type"] == "lab":
+            problems.append(f"{lid}: non-lab class in lab room {e['room']}")
+
         for t in range(start, start + l["hours"]):
             owners = [("room", e["room"]), ("lecturer", l["lecturer"])]
             owners += [("group", g) for g in l["groups"]]
