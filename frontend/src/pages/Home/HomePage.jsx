@@ -51,7 +51,7 @@ export default function HomePage() {
             <span className={`mt-1 text-3xl font-bold ${s.danger ? 'text-danger' : 'text-navy-900'}`}>{s.value}</span>
             <span className="mt-1 text-xs text-ink-4">{s.note}</span>
             <Link to={s.to} className="mt-4 text-xs font-medium text-navy-700 hover:underline">
-              {s.cta} → test
+              {s.cta} →
             </Link>
           </div>
         ))}
