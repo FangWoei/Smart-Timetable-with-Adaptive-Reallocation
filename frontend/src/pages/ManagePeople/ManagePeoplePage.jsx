@@ -3,7 +3,13 @@ import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Tabs from '../../components/Tabs.jsx'
 import Badge from '../../components/Badge.jsx'
-import { LECTURERS } from '../../data/people.js'
+import { LECTURERS as INITIAL_LECTURERS } from '../../data/people.js'
+
+// 为现有模拟数据默认补全 type ('full-time' 或 'part-time')
+const LECTURERS = INITIAL_LECTURERS.map((l, index) => ({
+  ...l,
+  type: l.type || (index % 2 === 0 ? 'full-time' : 'part-time')
+}))
 
 // 模拟科目数据
 const SUBJECTS = [
@@ -127,6 +133,7 @@ function availability(l) {
 // 讲师子组件
 function LecturersTab() {
   const [query, setQuery] = useState('')
+  const [filterType, setFilterType] = useState('all') // 'all' | 'full-time' | 'part-time'
   const [lecturers, setLecturers] = useState(LECTURERS)
   const [selectedId, setSelectedId] = useState(null)
   const [editForm, setEditForm] = useState(null)
@@ -142,8 +149,12 @@ function LecturersTab() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return lecturers.filter((l) => !q || l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q))
-  }, [query, lecturers])
+    return lecturers.filter((l) => {
+      const matchesQuery = !q || l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q)
+      const matchesType = filterType === 'all' || l.type === filterType
+      return matchesQuery && matchesType
+    })
+  }, [query, filterType, lecturers])
 
   const handleSave = async () => {
     if (!editForm) return
@@ -170,12 +181,15 @@ function LecturersTab() {
     }
   }
 
+  // 切换时间格子的逻辑（仅对 part-time 生效）
   const toggleSlot = (day, slot) => {
     if (!editForm) return
+    if (editForm.type === 'full-time') return
+
     const currentAvail = editForm.availability || {}
     const key = `${day}-${slot}`
-    const currentStatus = currentAvail[key] || 'open'
-    const nextStatus = currentStatus === 'open' ? 'busy' : currentStatus === 'busy' ? 'unavailable' : 'open'
+    const currentStatus = currentAvail[key] || 'available'
+    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available'
 
     setEditForm({
       ...editForm,
@@ -189,14 +203,40 @@ function LecturersTab() {
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       <div className="min-w-0 flex-1 flex flex-col">
-        <div className="mb-3 flex items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search lecturers…"
-            aria-label="Search lecturers"
-            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
-          />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search lecturers…"
+              aria-label="Search lecturers"
+              className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+            />
+          </div>
+          {/* 全职 / 兼职 快速筛选按钮 */}
+          <div className="flex items-center gap-1 rounded bg-panel p-0.5 border border-line text-xs">
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'all' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              All ({lecturers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('full-time')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'full-time' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              Full-time ({lecturers.filter(l => l.type === 'full-time').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('part-time')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'part-time' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              Part-time ({lecturers.filter(l => l.type === 'part-time').length})
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
@@ -204,6 +244,7 @@ function LecturersTab() {
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
                 <th className="px-3 py-2 font-semibold">Lecturer</th>
+                <th className="px-3 py-2 font-semibold">Employment</th>
                 <th className="px-3 py-2 font-semibold">Subjects taught</th>
                 <th className="px-3 py-2 font-semibold">Weekly hours</th>
                 <th className="px-3 py-2 font-semibold">Availability</th>
@@ -214,6 +255,7 @@ function LecturersTab() {
               {rows.map((l) => {
                 const a = availability(l)
                 const active = l.id === selectedId
+                const isFullTime = l.type === 'full-time'
                 return (
                   <tr
                     key={l.id}
@@ -228,6 +270,11 @@ function LecturersTab() {
                         <div className="font-medium text-ink">{l.name}</div>
                         <div className="text-ink-4 text-[11px]">{l.email}</div>
                       </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                        {isFullTime ? 'Full-time' : 'Part-time'}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-ink-2">{l.subjects?.join(', ') || 'None'}</td>
                     <td className="px-3 py-2 text-ink-2">{l.hours} / {l.cap} hrs</td>
@@ -249,7 +296,7 @@ function LecturersTab() {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-ink-4">No lecturers found.</td>
+                  <td colSpan="6" className="py-8 text-center text-ink-4">No lecturers found.</td>
                 </tr>
               )}
             </tbody>
@@ -283,6 +330,18 @@ function LecturersTab() {
             />
           </label>
 
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Employment Type
+            <select
+              value={editForm.type || 'full-time'}
+              onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+            </select>
+          </label>
+
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-4">Subjects this lecturer can teach</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {editForm.subjects?.map((s, idx) => (
@@ -313,40 +372,40 @@ function LecturersTab() {
             </div>
           </div>
 
-          <div className="mt-4 border-t border-line pt-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">Weekly availability — click a cell to toggle</div>
-            <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
-              <div></div>
-              {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
-              {TIME_SLOTS.map(slot => (
-                <div key={`row-${slot}`} className="contents">
-                  <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
-                  {DAYS.map(day => {
-                    const status = editForm.availability?.[`${day}-${slot}`] || 'open'
-                    let bgClass = 'bg-panel text-ink-3'
-                    let textLabel = 'avail'
-                    if (status === 'busy') {
-                      bgClass = 'bg-[#FBE8D2] text-[#A57D2E] font-medium'
-                      textLabel = 'busy'
-                    } else if (status === 'unavailable') {
-                      bgClass = 'bg-[#FBE2E6] text-danger font-medium'
-                      textLabel = 'off'
-                    }
-                    return (
-                      <button
-                        key={`${day}-${slot}`}
-                        type="button"
-                        className={`h-7 rounded border border-line ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
-                        onClick={() => toggleSlot(day, slot)}
-                      >
-                        {textLabel}
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
+          {/* 只有当类型为 part-time 时才渲染每周可用时间选择网格，full-time 直接隐藏 */}
+          {editForm.type === 'part-time' && (
+            <div className="mt-4 border-t border-line pt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">Weekly availability — click a cell to toggle</div>
+              <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
+                <div></div>
+                {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
+                {TIME_SLOTS.map(slot => (
+                  <div key={`row-${slot}`} className="contents">
+                    <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
+                    {DAYS.map(day => {
+                      const status = editForm.availability?.[`${day}-${slot}`] || 'available'
+                      let bgClass = 'bg-emerald-50 text-emerald-700 font-medium border-emerald-300'
+                      let textLabel = 'avail'
+                      if (status === 'unavailable') {
+                        bgClass = 'bg-[#FBE2E6] text-danger font-medium border-red-300'
+                        textLabel = 'off'
+                      }
+                      return (
+                        <button
+                          key={`${day}-${slot}`}
+                          type="button"
+                          className={`h-7 rounded border ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
+                          onClick={() => toggleSlot(day, slot)}
+                        >
+                          {textLabel}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-5 flex items-center justify-between border-t border-line pt-3">
             <button type="button" onClick={handleDelete} className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors">Delete</button>

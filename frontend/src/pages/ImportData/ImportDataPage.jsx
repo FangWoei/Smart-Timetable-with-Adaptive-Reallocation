@@ -18,6 +18,9 @@ const MANUAL_CATEGORIES = [
   { id: 'student', label: 'Student', desc: 'Add students', badge: 'ST' },
 ];
 
+const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
+const TIME_SLOTS = ['08-10', '10-12', '13-15', '15-17'];
+
 function BulkImport() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -98,10 +101,10 @@ function BulkImport() {
         <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
           <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
           <ul className="mt-2 list-disc space-y-1.5 pl-4">
-            <li>Intake group, level and head count[cite: 8]</li>
-            <li>Course code, name and hours per week[cite: 8]</li>
-            <li>Lecturer name and full-time / part-time[cite: 8]</li>
-            <li className="text-ink-4">Student names are skipped[cite: 8]</li>
+            <li>Intake group, level and head count</li>
+            <li>Course code, name and hours per week</li>
+            <li>Lecturer name and full-time / part-time</li>
+            <li className="text-ink-4">Student names are skipped</li>
           </ul>
         </aside>
       </div>
@@ -216,6 +219,7 @@ function ManualImport() {
   const [lecturerName, setLecturerName] = useState('');
   const [lecturerEmail, setLecturerEmail] = useState('');
   const [lecturerType, setLecturerType] = useState('Full-time');
+  const [lecturerAvailability, setLecturerAvailability] = useState({});
 
   const [roomCode, setRoomCode] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('40');
@@ -240,6 +244,18 @@ function ManualImport() {
 
   const removeGroupTag = (g) => {
     setGroups(groups.filter(item => item !== g));
+  };
+
+  // 手动添加讲师时切换时间槽逻辑（仅 Part-time 可编辑）
+  const toggleLecturerSlot = (day, slot) => {
+    if (lecturerType === 'Full-time') return;
+    const key = `${day}-${slot}`;
+    const currentStatus = lecturerAvailability[key] || 'available';
+    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+    setLecturerAvailability({
+      ...lecturerAvailability,
+      [key]: nextStatus,
+    });
   };
 
   const handleAddRecord = () => {
@@ -268,10 +284,13 @@ function ManualImport() {
         id: Date.now(),
         type: 'Lecturer',
         name: lecturerName,
+        employmentType: lecturerType, // 保存全职/兼职身份
         detail: `${lecturerType} · ${lecturerEmail || 'No email'}`,
       };
       setLecturerName('');
       setLecturerEmail('');
+      setLecturerType('Full-time');
+      setLecturerAvailability({});
     } else if (category === 'classroom') {
       if (!roomCode.trim()) return;
       newRec = {
@@ -575,11 +594,48 @@ function ManualImport() {
                     onChange={(e) => setLecturerType(e.target.value)}
                     className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                   >
-                    <option>Full-time</option>
-                    <option>Part-time</option>
-                    <option>Contract / Visiting</option>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract / Visiting">Contract / Visiting</option>
                   </select>
                 </div>
+
+                {/* 只有当选择 Part-time 时才显示每周可用时间网格；Full-time 直接隐藏 */}
+                {lecturerType === 'Part-time' && (
+                  <div className="mt-4 border-t border-line pt-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">
+                      Weekly availability — click a cell to toggle
+                    </div>
+                    <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
+                      <div></div>
+                      {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
+                      {TIME_SLOTS.map(slot => (
+                        <div key={`row-${slot}`} className="contents">
+                          <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
+                          {DAYS.map(day => {
+                            const status = lecturerAvailability[`${day}-${slot}`] || 'available';
+                            let bgClass = 'bg-emerald-50 text-emerald-700 font-medium border-emerald-300';
+                            let textLabel = 'avail';
+                            if (status === 'unavailable') {
+                              bgClass = 'bg-[#FBE2E6] text-danger font-medium border-red-300';
+                              textLabel = 'off';
+                            }
+                            return (
+                              <button
+                                key={`${day}-${slot}`}
+                                type="button"
+                                className={`h-7 rounded border ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
+                                onClick={() => toggleLecturerSlot(day, slot)}
+                              >
+                                {textLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -756,23 +812,38 @@ function ManualImport() {
                 <span>Not saved anywhere else until you press Done</span>
               </div>
               <div className="divide-y divide-line bg-white rounded-b-md border-x border-b border-line">
-                {addedRecords.map((rec) => (
-                  <div key={rec.id} className="flex items-center justify-between p-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">{rec.type}</span>
-                      <span className="font-semibold text-ink">{rec.name}</span>
+                {addedRecords.map((rec) => {
+                  const isLecturer = rec.type === 'Lecturer';
+                  const isFullTime = rec.employmentType === 'Full-time';
+
+                  return (
+                    <div key={rec.id} className="flex items-center justify-between p-3 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">{rec.type}</span>
+                        <span className="font-semibold text-ink">{rec.name}</span>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        {isLecturer ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                              {rec.employmentType}
+                            </span>
+                            <span className="text-ink-3">·</span>
+                            <span className="text-ink-3">{rec.detail.split(' · ')[1]}</span>
+                          </div>
+                        ) : (
+                          <span className="text-ink-3">{rec.detail}</span>
+                        )}
+                        <button 
+                          onClick={() => handleRemove(rec.id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <span className="text-ink-3">{rec.detail}</span>
-                      <button 
-                        onClick={() => handleRemove(rec.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
