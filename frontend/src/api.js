@@ -57,10 +57,20 @@ function toneFor(code) {
   const n = [...code].reduce((a, c) => a + c.charCodeAt(0), 0);
   return TONE_KEYS[n % TONE_KEYS.length];
 }
-
+/**
+ * One hue per course (class_code): the golden angle spreads hues as far apart
+ * as possible, and sorting the codes keeps the colours the same on every load.
+ */
+function courseHues(entries) {
+  const codes = [...new Set(entries.map((e) => e.class_code))].sort();
+  return new Map(
+    codes.map((code, i) => [code, Math.round((210 + i * 137.508) % 360)]),
+  );
+}
 /** Convert the API timetable into the shape TimetableGrid expects. */
 export function toGridGroups(timetable, counts = {}) {
   const byGroup = new Map();
+  const hues = courseHues(timetable.entries ?? []);
 
   for (const e of timetable.entries ?? []) {
     for (const g of e.groups) {
@@ -74,6 +84,7 @@ export function toGridGroups(timetable, counts = {}) {
         room: e.room,
         lecturer: e.lecturer,
         tone: toneFor(e.class_code),
+        hue: hues.get(e.class_code),
         shared: e.groups.length > 1,
       });
     }

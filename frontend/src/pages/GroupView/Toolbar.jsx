@@ -1,3 +1,4 @@
+// src/pages/GroupView/Toolbar.jsx
 const VIEWS = [
   { id: 'group', label: 'By group' },
   { id: 'lecturer', label: 'By lecturer' },
@@ -13,7 +14,18 @@ function Divider() {
   return <span className="mx-1 h-7 w-px bg-line" aria-hidden />
 }
 
-export default function Toolbar({ view, onViewChange, onGenerate, onVerify, onApprove, canApprove }) {
+export default function Toolbar({
+  view,
+  onViewChange,
+  onGenerate,
+  onVerify,
+  onApprove,
+  canApprove,
+  onExportBatch,
+  isExporting = false,
+  exportState = null,
+  totalItemsCount = 0,
+}) {
   return (
     <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-white px-3">
       <button
@@ -64,8 +76,9 @@ export default function Toolbar({ view, onViewChange, onGenerate, onVerify, onAp
               aria-selected={active}
               type="button"
               onClick={() => onViewChange(v.id)}
+              disabled={isExporting}
               className={[
-                'h-[26px] w-[98px] rounded-[3px] text-[13px] transition-colors',
+                'h-[26px] w-[98px] rounded-[3px] text-[13px] transition-colors disabled:cursor-not-allowed',
                 active
                   ? 'border border-line-strong bg-white font-semibold text-navy-700'
                   : 'border border-transparent text-ink-3 hover:text-ink',
@@ -78,8 +91,19 @@ export default function Toolbar({ view, onViewChange, onGenerate, onVerify, onAp
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <button type="button" onClick={() => window.print()} className={outline}>Print</button>
-        <button type="button" className={outline}>Export</button>
+
+        {/* 批量下载：当前视图下每个 group / lecturer / room 一个 PDF，打包成 ZIP */}
+        <button
+          type="button"
+          onClick={onExportBatch}
+          disabled={isExporting || totalItemsCount === 0}
+          className="flex h-[30px] items-center gap-1.5 rounded border border-amber-500 bg-amber-50 px-3 text-[13px] font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isExporting && exportState
+            ? `⏳ Generating ${exportState.done}/${exportState.total}...`
+            : `Download All PDFs (.zip) (${totalItemsCount})`}
+        </button>
+
         <button
           type="button"
           onClick={onApprove}

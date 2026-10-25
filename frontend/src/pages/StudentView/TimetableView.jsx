@@ -1,6 +1,6 @@
 // src/pages/StudentView/TimetableView.jsx
 const TIME_SLOTS = [
-  '08:00–08:30', '08:30–09:00', '09:00–09:30', '09:30–10:00',
+  '08:30–09:00', '09:00–09:30', '09:30–10:00',
   '10:00–10:30', '10:30–11:00', '11:00–11:30', '11:30–12:00',
   '12:00–12:30', '12:30–13:00', '13:00–13:30', '13:30–14:00',
   '14:00–14:30', '14:30–15:00', '15:00–15:30', '15:30–16:00',
@@ -18,31 +18,41 @@ const TONES = {
   blue: ['bg-blue-50/40', 'border-blue-200', 'text-blue-900'],
 }
 
-function renderDayCells(dayName, courses) {
+// 网页显示的尺寸（想再小/再大，只改这里）
+const SCREEN_TABLE_MIN_W = 1500 // 原来 1800
+const SCREEN_COL_W = 'w-[66px]' // 原来 w-24
+const SCREEN_DAY_COL_W = 'w-24' // 原来 w-28
+const SCREEN_ROW_H = 'h-12' // 原来 h-16
+
+function renderDayCells(dayName, courses, exportMode) {
   const cells = []
   let cursor = 1
   const sorted = [...courses].sort((a, b) => a.startSlot - b.startSlot)
 
   sorted.forEach((course) => {
     while (cursor < course.startSlot) {
-      cells.push(<td key={`empty-${dayName}-${cursor}`} className="border-r border-line p-1.5" />)
+      cells.push(<td key={`empty-${dayName}-${cursor}`} className="border-r border-line p-1" />)
       cursor++
     }
     const [bg, border, text] = TONES[course.tone] || ['bg-panel', 'border-line', 'text-ink']
 
     cells.push(
-      <td key={course.id} colSpan={course.colSpan} className={`border-r border-line p-1.5 align-middle ${bg}`}>
-        <div className={`rounded border ${border} bg-white p-2 shadow-xs space-y-1`}>
+      <td key={course.id} colSpan={course.colSpan} className={`border-r border-line p-1 align-middle ${bg}`}>
+        <div className={`rounded border ${border} bg-white shadow-xs space-y-0.5 ${exportMode ? 'p-1' : 'p-1.5'}`}>
           <div className="flex items-center justify-between gap-2">
-            <p className={`font-bold ${text} text-[11px] leading-tight`}>{course.name}</p>
+            <p className={`font-bold ${text} leading-tight ${exportMode ? 'text-[9px]' : 'text-[10px]'}`}>
+              {course.name}
+            </p>
             <span
-              className="shrink-0 rounded bg-panel px-1.5 py-0.5 font-mono text-[9px] text-ink-4"
+              className={`shrink-0 whitespace-nowrap rounded bg-panel px-1 py-0.5 font-mono text-ink-4 ${
+                exportMode ? 'text-[8px]' : 'text-[8px]'
+              }`}
               title={`Active: ${course.startDate} to ${course.endDate}`}
             >
               {course.startDate.slice(0, 5)} ~ {course.endDate.slice(0, 5)}
             </span>
           </div>
-          <p className="text-[10px] text-ink-3">
+          <p className={`text-ink-3 ${exportMode ? 'text-[8px]' : 'text-[9px]'}`}>
             {course.instructor} · {course.room}
           </p>
         </div>
@@ -52,7 +62,7 @@ function renderDayCells(dayName, courses) {
   })
 
   while (cursor <= TIME_SLOTS.length) {
-    cells.push(<td key={`empty-end-${dayName}-${cursor}`} className="border-r border-line p-1.5" />)
+    cells.push(<td key={`empty-end-${dayName}-${cursor}`} className="border-r border-line p-1" />)
     cursor++
   }
   return cells
@@ -60,33 +70,44 @@ function renderDayCells(dayName, courses) {
 
 /**
  * 页面显示和 PDF 导出共用同一个组件
- * exportMode = true 时：隐藏 Student ID、去掉 sticky、固定宽度
+ * exportMode = true：PDF 设计（A4 横向、铺满整页、字号 9px、不显示 Student ID）—— 保持不变
+ * exportMode = false：网页显示，尺寸已缩小
  */
 export default function TimetableView({ student, timetable, exportMode = false }) {
   return (
-    <div className={exportMode ? 'bg-white p-6' : 'space-y-5'}>
+    <div className={exportMode ? 'bg-white' : 'space-y-3'}>
       {/* 学生信息头 */}
       <div
         className={
           exportMode
-            ? 'mb-3'
-            : 'flex items-start justify-between rounded-lg border border-line bg-white p-4 shadow-xs'
+            ? 'mb-2'
+            : 'flex items-start justify-between rounded-lg border border-line bg-white px-3 py-2.5 shadow-xs'
         }
       >
         <div>
           {!exportMode && (
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-4">
               Student ID {student.id}
             </p>
           )}
-          <h1 className="mt-0.5 text-xl font-bold text-ink">{student.name}</h1>
-          <p className="mt-1 text-xs text-ink-3">Base group DB2601A · Diploma in Business, Year 1</p>
+          <h1 className={`mt-0.5 font-bold text-ink ${exportMode ? 'text-xl' : 'text-base'}`}>{student.name}</h1>
+          <p className={`mt-0.5 text-ink-3 ${exportMode ? 'text-xs' : 'text-[11px]'}`}>
+            Base group DB2601A · Diploma in Business, Year 1
+          </p>
         </div>
       </div>
 
       {/* 时间表 */}
-      <div className="overflow-hidden rounded-lg border border-line bg-white shadow-xs">
-        <div className="grid grid-cols-2 border-b border-line bg-panel px-4 py-2.5 text-[11px] text-ink-3">
+      <div
+        className={`overflow-hidden rounded-lg border bg-white shadow-xs ${
+          exportMode ? 'border-slate-300' : 'border-line'
+        }`}
+      >
+        <div
+          className={`grid grid-cols-2 border-b border-line text-ink-3 ${
+            exportMode ? 'bg-slate-100 px-4 py-2.5 text-[11px]' : 'bg-panel px-3 py-2 text-[10px]'
+          }`}
+        >
           <div>
             <span className="font-semibold text-ink">PROGRAMME:</span> {timetable.programme}
           </div>
@@ -99,20 +120,31 @@ export default function TimetableView({ student, timetable, exportMode = false }
 
         <div className={exportMode ? '' : 'overflow-x-auto'}>
           <table
-            className="w-full border-collapse text-[11px] text-ink"
-            style={{ minWidth: exportMode ? 1600 : 1800 }}
+            className={`w-full border-collapse text-ink ${exportMode ? 'text-[9px]' : 'text-[10px]'}`}
+            style={exportMode ? { tableLayout: 'fixed' } : { minWidth: SCREEN_TABLE_MIN_W }}
           >
             <thead>
-              <tr className="border-b border-line bg-panel font-semibold text-ink-3">
+              <tr
+                className={`border-b border-line font-semibold text-ink-3 ${
+                  exportMode ? 'bg-slate-100' : 'bg-panel'
+                }`}
+              >
                 <th
-                  className={`w-28 border-r border-line bg-panel p-2 text-left ${
-                    exportMode ? '' : 'sticky left-0 z-10'
+                  className={`border-r border-line text-left ${
+                    exportMode
+                      ? 'w-28 bg-slate-100 p-2'
+                      : `${SCREEN_DAY_COL_W} sticky left-0 z-10 bg-panel p-1.5`
                   }`}
                 >
                   DAY / TIME
                 </th>
                 {TIME_SLOTS.map((slot) => (
-                  <th key={slot} className="w-24 border-r border-line p-1.5 text-center">
+                  <th
+                    key={slot}
+                    className={`border-r border-line text-center ${
+                      exportMode ? 'p-1.5' : `${SCREEN_COL_W} p-1 text-[9px]`
+                    }`}
+                  >
                     {slot}
                   </th>
                 ))}
@@ -120,10 +152,10 @@ export default function TimetableView({ student, timetable, exportMode = false }
             </thead>
             <tbody className="divide-y divide-line">
               {DAYS.map((dayName) => (
-                <tr key={dayName} className="h-16">
+                <tr key={dayName} className={exportMode ? 'h-12' : SCREEN_ROW_H}>
                   <td
-                    className={`border-r border-line bg-white p-2.5 font-bold text-ink ${
-                      exportMode ? '' : 'sticky left-0 z-10'
+                    className={`border-r border-line bg-white font-bold text-ink ${
+                      exportMode ? 'p-2.5' : 'sticky left-0 z-10 p-1.5 text-[10px]'
                     }`}
                   >
                     {dayName}
@@ -131,6 +163,7 @@ export default function TimetableView({ student, timetable, exportMode = false }
                   {renderDayCells(
                     dayName,
                     timetable.courses.filter((c) => c.day === dayName),
+                    exportMode,
                   )}
                 </tr>
               ))}

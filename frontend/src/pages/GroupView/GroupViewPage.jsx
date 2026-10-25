@@ -7,7 +7,7 @@ import Sidebar from "./Sidebar.jsx";
 import TimetableGrid from "../../components/TimetableGrid.jsx";
 import Toolbar from "./Toolbar.jsx";
 import { LECTURERS } from "../../data/people.js";
-import { RESOURCES } from "../../data/timetable.js";
+import { exportGroupBatchZip } from "./exportGroupPdf.jsx";
 
 export default function GroupViewPage() {
   const [view, setView] = useState("group");
@@ -19,6 +19,10 @@ export default function GroupViewPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedLessonData, setSelectedLessonData] = useState(null);
+
+  // 导出状态：null | { done, total }
+  const [exportState, setExportState] = useState(null);
+  const isExporting = exportState !== null;
 
   const load = useCallback(async () => {
     try {
@@ -43,7 +47,7 @@ export default function GroupViewPage() {
   useEffect(() => {
     void load();
   }, [load]);
-  
+
   async function handleGenerate() {
     setBusy(true);
     setError("");
@@ -91,12 +95,18 @@ export default function GroupViewPage() {
     }
   }
 
-  // 根据当前选择的 view（group / lecturer / room）转换出对应的网格行数据
   const displayRows = useMemo(() => {
     if (view === 'group') {
-      return groups;
+      return groups.map((g) => ({
+        ...g,
+        lessons: (g.lessons || []).map((l) => ({
+          ...l,
+          lecturer: l.lecturer || 'TBA',
+          room: l.room || 'Unassigned',
+        })),
+      }));
     }
-    
+
     if (view === 'lecturer') {
       const lecturerMap = {};
       LECTURERS.forEach(lec => {
@@ -127,7 +137,7 @@ export default function GroupViewPage() {
 
     if (view === 'room') {
       const roomMap = {};
-      
+
       groups.forEach(group => {
         group.lessons?.forEach(lesson => {
           const roomName = lesson.room || 'Unassigned Room';
@@ -153,6 +163,32 @@ export default function GroupViewPage() {
     }
   }, [view, displayRows]);
 
+  // 只导出有课的条目（没课的讲师 / 房间不生成空白 PDF）
+  const exportTargets = useMemo(
+    () => displayRows.filter((r) => r.lessons && r.lessons.length > 0),
+    [displayRows],
+  );
+
+  // 批量导出逻辑
+  const handleBatchExport = async () => {
+    if (isExporting) return;
+    if (exportTargets.length === 0) {
+      alert("No timetable items to export.");
+      return;
+    }
+    setExportState({ done: 0, total: exportTargets.length });
+    try {
+      await exportGroupBatchZip(exportTargets, view, (done, total) =>
+        setExportState({ done, total }),
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to export ZIP file.");
+    } finally {
+      setExportState(null);
+    }
+  };
+
   const sessions = new Set(
     groups.flatMap((g) =>
       g.lessons.map((l) => `${l.code}-${l.day}-${l.period}`),
@@ -160,11 +196,11 @@ export default function GroupViewPage() {
   ).size;
 
   const conflicts = groups.reduce((n, g) => n + g.lessons.filter((l) => l.conflict).length, 0);
-  const placedLessonsCount = 42; 
+  const placedLessonsCount = 42;
   const totalLessonsCount = 45;
 
-  const selectedGroup = selectedLessonData 
-    ? displayRows.find(g => g.id === selectedLessonData.groupId) 
+  const selectedGroup = selectedLessonData
+    ? displayRows.find(g => g.id === selectedLessonData.groupId)
     : null;
 
   return (
@@ -179,15 +215,19 @@ export default function GroupViewPage() {
         onVerify={handleVerify}
         onApprove={() => {}}
         canApprove={conflicts === 0}
+        onExportBatch={handleBatchExport}
+        isExporting={isExporting}
+        exportState={exportState}
+        totalItemsCount={exportTargets.length}
       />
 
       <div className="flex min-h-0 flex-1 overflow-hidden pb-8">
         <Sidebar
-  groups={displayRows}
-  selectedId={selectedId}
-  onSelect={setSelectedId}
-  view={view}
-/>
+          groups={displayRows}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          view={view}
+        />
 
         <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
           <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
@@ -250,10 +290,10 @@ export default function GroupViewPage() {
         </main>
 
         {selectedLessonData && selectedGroup && (
-          <LessonDetailsPanel 
-            lesson={selectedLessonData.lesson} 
+          <LessonDetailsPanel
+            lesson={selectedLessonData.lesson}
             group={selectedGroup}
-            onClose={() => setSelectedLessonData(null)} 
+            onClose={() => setSelectedLessonData(null)}
           />
         )}
       </div>
