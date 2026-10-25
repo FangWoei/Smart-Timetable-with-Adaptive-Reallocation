@@ -39,8 +39,9 @@ export const api = {
   importCommit: (file) => uploadCsv("/import/commit", file),
 
   getGroups: () => request("/groups"),
+  getClasses: () => request("/classes"), // 👈 补全了该方法，解决报错
   getHolidays: (start, end) =>
-  request(`/holidays?start=${start}&end=${end}`),
+    request(`/holidays?start=${start}&end=${end}`),
   syncHolidays: (year, state) =>
     request(`/holidays/sync?year=${year}&state=${encodeURIComponent(state)}`, {
       method: "POST",
@@ -58,6 +59,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ entries }),
     }),
+  updateEntry: (entryId, data) =>
+    request(`/timetable/entries/${entryId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 const TONE_KEYS = ["blue", "green", "amber", "purple", "teal", "rose", "gold"];
@@ -66,16 +72,14 @@ function toneFor(code) {
   const n = [...code].reduce((a, c) => a + c.charCodeAt(0), 0);
   return TONE_KEYS[n % TONE_KEYS.length];
 }
-/**
- * One hue per course (class_code): the golden angle spreads hues as far apart
- * as possible, and sorting the codes keeps the colours the same on every load.
- */
+
 function courseHues(entries) {
   const codes = [...new Set(entries.map((e) => e.class_code))].sort();
   return new Map(
     codes.map((code, i) => [code, Math.round((210 + i * 137.508) % 360)]),
   );
 }
+
 /** Convert the API timetable into the shape TimetableGrid expects. */
 export function toGridGroups(timetable, counts = {}) {
   const byGroup = new Map();
@@ -84,11 +88,19 @@ export function toGridGroups(timetable, counts = {}) {
   for (const e of timetable.entries ?? []) {
     for (const g of e.groups) {
       if (!byGroup.has(g)) byGroup.set(g, []);
+      
+      const rawStart = e.start_slot || 1;
+      const startSlot = Math.round((rawStart - 1) * 2 + 1);
+      const slotSpan = Math.round((e.hours || 2) * 2);
+
       byGroup.get(g).push({
+        id: e.id || e.entry_id || `${e.class_code}-${e.day}-${rawStart}`,
         code: e.class_code,
         module: e.module,
         day: e.day - 1, // API is 1-5, grid is 0-4
-        period: e.start_slot, // API is 1-10, grid period 1-10
+        startSlot: startSlot,
+        slotSpan: slotSpan,
+        period: rawStart,
         span: e.hours,
         room: e.room,
         lecturer: e.lecturer,

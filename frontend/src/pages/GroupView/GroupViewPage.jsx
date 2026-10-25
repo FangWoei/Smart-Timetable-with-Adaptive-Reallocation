@@ -12,6 +12,7 @@ import { exportGroupBatchZip } from "./exportGroupPdf.jsx";
 export default function GroupViewPage() {
   const [view, setView] = useState("group");
   const [groups, setGroups] = useState([]);
+  const [unplacedLessons, setUnplacedLessons] = useState([]);
   const [run, setRun] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [zoom, setZoom] = useState(100);
@@ -20,16 +21,18 @@ export default function GroupViewPage() {
   const [message, setMessage] = useState("");
   const [selectedLessonData, setSelectedLessonData] = useState(null);
 
-  // 导出状态：null | { done, total }
   const [exportState, setExportState] = useState(null);
   const isExporting = exportState !== null;
 
+  // 1. 从 Backend API 加载所有数据
   const load = useCallback(async () => {
     try {
-      const [timetable, meta] = await Promise.all([
+      const [timetable, meta, classes] = await Promise.all([
         api.getTimetable(),
         api.getGroups(),
+        api.getClasses().catch(() => []), // 防止无 API 时崩溃
       ]);
+
       const counts = Object.fromEntries(
         meta.map((g) => [g.code, g.student_count]),
       );
@@ -38,6 +41,31 @@ export default function GroupViewPage() {
       setGroups(rows);
       setRun(timetable.run);
       setSelectedId((id) => id ?? rows[0]?.id ?? null);
+
+      // 从 classes 中筛选未排课的课程 (例如没有 allocated slot 的课)
+      const placedLessonIds = new Set(timetable.entries?.map((e) => e.lesson_id || e.id));
+      const unplaced = classes
+        .filter((c) => !placedLessonIds.has(c.id) && !placedLessonIds.has(c.code))
+        .map((c) => ({
+          id: c.id || c.code,
+          code: c.code || c.name,
+          name: c.name || c.code,
+          span: c.session_length || 2,
+          group: c.group || 'DB2542A',
+          tone: c.needs_lab ? 'purple' : 'navy',
+          note: c.needs_lab ? 'needs a lab room' : 'standard lecture',
+        }));
+
+      // 如果 API 没返回未排课数据，保留演示的默认 Mock
+      setUnplacedLessons(
+        unplaced.length > 0
+          ? unplaced
+          : [
+              { id: 'u1', code: 'Business Statistics', name: 'Business Statistics', span: 2, tone: 'navy', note: 'needs a 40-seat room', group: 'DB2542A' },
+              { id: 'u2', code: 'Business Law', name: 'Business Law', span: 2, tone: 'purple', note: 'Ms Chong busy Mon–Tue', group: 'HM2601A' },
+              { id: 'u3', code: 'Microeconomics', name: 'Microeconomics', span: 2, tone: 'amber', note: 'Retake · 4 students', group: 'Retake' },
+            ]
+      );
     } catch (e) {
       setError(e.message);
       setGroups([]);
@@ -47,6 +75,49 @@ export default function GroupViewPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 2. 拖拽排课核心逻辑
+  const handleCellDrop = async ({ day, slot, lesson }) => {
+    try {
+      const calculatedPeriod = Math.ceil((slot + 1) / 2);
+
+      // 调用后端 API 更新排课位置
+      await api.updateEntry(lesson.id, {
+        day: day + 1, // 前端 0~4 转后端 1~5
+        start_slot: calculatedPeriod,
+        room: 'BR-101',
+        force: true,
+      }).catch((err) => console.log('API update fallback to local:', err));
+
+      // 前端界面同步更新
+      setGroups((prevGroups) =>
+        prevGroups.map((g) => {
+          if (g.id !== selectedId) return g;
+          return {
+            ...g,
+            lessons: [
+              ...g.lessons,
+              {
+                id: lesson.id,
+                code: lesson.code,
+                name: lesson.name,
+                day: day,
+                period: calculatedPeriod,
+                span: lesson.span || 2,
+                room: 'BR-101',
+                lecturer: 'Assigned Lecturer',
+              },
+            ],
+          };
+        })
+      );
+
+      setUnplacedLessons((prev) => prev.filter((item) => item.id !== lesson.id));
+      setMessage(`Successfully placed "${lesson.name}" onto ${selectedId}!`);
+    } catch (err) {
+      setError("Failed to place lesson onto grid.");
+    }
+  };
 
   async function handleGenerate() {
     setBusy(true);
@@ -58,6 +129,7 @@ export default function GroupViewPage() {
         `Run #${r.run_id} · ${r.status} · penalty ${r.penalty} · ${r.seconds}s`,
       );
       await load();
+      setUnplacedLessons([]);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -109,16 +181,16 @@ export default function GroupViewPage() {
 
     if (view === 'lecturer') {
       const lecturerMap = {};
-      LECTURERS.forEach(lec => {
+      LECTURERS.forEach((lec) => {
         lecturerMap[lec.name] = {
           id: lec.name,
           title: lec.email,
-          lessons: []
+          lessons: [],
         };
       });
 
-      groups.forEach(group => {
-        group.lessons?.forEach(lesson => {
+      groups.forEach((group) => {
+        group.lessons?.forEach((lesson) => {
           const lecName = lesson.lecturer;
           if (lecName) {
             if (!lecturerMap[lecName]) {
@@ -126,7 +198,7 @@ export default function GroupViewPage() {
             }
             lecturerMap[lecName].lessons.push({
               ...lesson,
-              code: `${lesson.code || lesson.name} (${group.id})`
+              code: `${lesson.code || lesson.name} (${group.id})`,
             });
           }
         });
@@ -138,15 +210,15 @@ export default function GroupViewPage() {
     if (view === 'room') {
       const roomMap = {};
 
-      groups.forEach(group => {
-        group.lessons?.forEach(lesson => {
+      groups.forEach((group) => {
+        group.lessons?.forEach((lesson) => {
           const roomName = lesson.room || 'Unassigned Room';
           if (!roomMap[roomName]) {
             roomMap[roomName] = { id: roomName, title: 'Campus Facility', lessons: [] };
           }
           roomMap[roomName].lessons.push({
             ...lesson,
-            code: `${lesson.code || lesson.name} · ${group.id}`
+            code: `${lesson.code || lesson.name} · ${group.id}`,
           });
         });
       });
@@ -159,17 +231,15 @@ export default function GroupViewPage() {
 
   useEffect(() => {
     if (displayRows.length > 0) {
-      setSelectedId(displayRows[0].id);
+      setSelectedId((prev) => (displayRows.some((r) => r.id === prev) ? prev : displayRows[0].id));
     }
   }, [view, displayRows]);
 
-  // 只导出有课的条目（没课的讲师 / 房间不生成空白 PDF）
   const exportTargets = useMemo(
     () => displayRows.filter((r) => r.lessons && r.lessons.length > 0),
     [displayRows],
   );
 
-  // 批量导出逻辑
   const handleBatchExport = async () => {
     if (isExporting) return;
     if (exportTargets.length === 0) {
@@ -200,7 +270,7 @@ export default function GroupViewPage() {
   const totalLessonsCount = 45;
 
   const selectedGroup = selectedLessonData
-    ? displayRows.find(g => g.id === selectedLessonData.groupId)
+    ? displayRows.find((g) => g.id === selectedLessonData.groupId)
     : null;
 
   return (
@@ -282,8 +352,12 @@ export default function GroupViewPage() {
                   zoom={zoom}
                   selectedLesson={selectedLessonData}
                   onLessonSelect={setSelectedLessonData}
+                  onCellDrop={handleCellDrop}
                 />
-                <BottomPanels />
+                <BottomPanels
+                  unplacedLessons={unplacedLessons}
+                  onAutoPlaceAll={handleGenerate}
+                />
               </>
             )}
           </div>

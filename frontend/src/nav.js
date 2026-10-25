@@ -1,5 +1,6 @@
 export const NAV_ITEMS = [
   { to: '/', label: '', end: true },
+  { to: '/home', label: 'Home' },
   { to: '/group-view', label: 'Scheduler' },
   { to: '/students', label: 'Student timetables' },
   { to: '/people', label: 'Manage data' },
