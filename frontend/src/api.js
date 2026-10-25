@@ -39,7 +39,16 @@ export const api = {
   importCommit: (file) => uploadCsv("/import/commit", file),
 
   getGroups: () => request("/groups"),
-
+  getHolidays: (start, end) =>
+  request(`/holidays?start=${start}&end=${end}`),
+  syncHolidays: (year, state) =>
+    request(`/holidays/sync?year=${year}&state=${encodeURIComponent(state)}`, {
+      method: "POST",
+    }),
+  addHoliday: (h) =>
+    request("/holidays", { method: "POST", body: JSON.stringify(h) }),
+  deleteHoliday: (date) => request(`/holidays/${date}`, { method: "DELETE" }),
+  getSemesters: () => request("/semesters"),
   getTimetable: () => request("/timetable"),
   getRuns: () => request("/runs"),
   generate: (engine = "engine_v2") =>

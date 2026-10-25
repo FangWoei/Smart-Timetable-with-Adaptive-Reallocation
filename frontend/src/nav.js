@@ -4,4 +4,5 @@ export const NAV_ITEMS = [
   { to: '/students', label: 'Student timetables' },
   { to: '/people', label: 'Manage data' },
   { to: '/import', label: 'Import data' },
+  { to: '/holidays', label: 'Holidays' }
 ]
