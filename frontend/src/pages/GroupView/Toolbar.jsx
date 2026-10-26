@@ -8,7 +8,7 @@ const VIEWS = [
 const ghost =
   'flex h-[30px] items-center gap-1.5 rounded bg-panel px-3 text-xs text-ink-2 hover:bg-line-2 disabled:opacity-40'
 const outline =
-  'flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-white px-3 text-[13px] text-ink-2 hover:bg-panel'
+  'flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-white px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50'
 
 function Divider() {
   return <span className="mx-1 h-7 w-px bg-line" aria-hidden />
@@ -92,12 +92,12 @@ export default function Toolbar({
 
       <div className="ml-auto flex items-center gap-2">
 
-        {/* 批量下载：当前视图下每个 group / lecturer / room 一个 PDF，打包成 ZIP */}
+        {/* 批量下载按钮：已直接应用与 Verify 相同的 outline 样式 */}
         <button
           type="button"
           onClick={onExportBatch}
           disabled={isExporting || totalItemsCount === 0}
-          className="flex h-[30px] items-center gap-1.5 rounded border border-amber-500 bg-amber-50 px-3 text-[13px] font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className={outline}
         >
           {isExporting && exportState
             ? `⏳ Generating ${exportState.done}/${exportState.total}...`

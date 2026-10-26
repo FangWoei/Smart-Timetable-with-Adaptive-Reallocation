@@ -1,5 +1,6 @@
 // src/pages/StudentView/TimetableView.jsx
 import { useState } from 'react'
+
 const TIME_SLOTS = [
   '08:30–09:00', '09:00–09:30', '09:30–10:00',
   '10:00–10:30', '10:30–11:00', '11:00–11:30', '11:30–12:00',
@@ -8,9 +9,10 @@ const TIME_SLOTS = [
   '16:00–16:30', '16:30–17:00', '17:00–17:30', '17:30–18:00',
   '18:00–18:30', '18:30–19:00',
 ]
- 
+const SLOTS = TIME_SLOTS.length
+
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
- 
+
 const TONES = {
   navy: ['bg-navy-50/40', 'border-navy-200', 'text-navy-900'],
   amber: ['bg-amber-50/50', 'border-amber-300', 'text-amber-900'],
@@ -18,13 +20,12 @@ const TONES = {
   purple: ['bg-purple-50/40', 'border-purple-200', 'text-purple-900'],
   blue: ['bg-blue-50/40', 'border-blue-200', 'text-blue-900'],
 }
- 
-// 网页显示的尺寸（想再小/再大，只改这里）
-const SCREEN_TABLE_MIN_W = 1500 // 原来 1800
-const SCREEN_COL_W = 'w-[66px]' // 原来 w-24
-const SCREEN_DAY_COL_W = 'w-24' // 原来 w-28
-const SCREEN_ROW_H = 'h-12' // 原来 h-16
- 
+
+// 与 Group View (TimetableGrid.jsx) 完全对齐的网格与尺寸参数
+const DAY_COL_W = 96
+const BASE_COL_W = 66
+const ROW_H = 'h-12'
+
 // 同一天里时间重叠的课放进不同的"行"（lane），表格不会错位
 function layoutLanes(items) {
   const sorted = [...items].sort((a, b) => a.startSlot - b.startSlot)
@@ -40,21 +41,21 @@ function layoutLanes(items) {
   }
   return lanes.length ? lanes : [{ end: 1, items: [] }]
 }
- 
+
 // 空格子：拖拽时是放置目标。悬停时高亮这门课会占用的格子；压到原本的课就是红色，不能放。
 function EmptyCell({ dayName, slot, dnd, hover, setHover }) {
   const base = 'border-r border-line p-1'
   const span = dnd?.dragSpan ?? 0
   if (!dnd || span === 0) return <td className={base} />
- 
+
   const start = Math.min(slot, TIME_SLOTS.length - span + 1)
   const blocked = dnd.isBlocked(dayName, start)
   const lit = hover && hover.day === dayName && slot >= hover.start && slot < hover.start + span
- 
+
   return (
     <td
       onDragOver={(e) => {
-        if (!blocked) e.preventDefault() // 不 preventDefault = 不允许放（光标变禁止）
+        if (!blocked) e.preventDefault()
         if (!hover || hover.day !== dayName || hover.start !== start) {
           setHover({ day: dayName, start, blocked })
         }
@@ -70,11 +71,11 @@ function EmptyCell({ dayName, slot, dnd, hover, setHover }) {
     />
   )
 }
- 
+
 function CourseCell({ course, exportMode, dnd, selected, onClick }) {
   const [bg, border, text] = TONES[course.tone] || ['bg-panel', 'border-line', 'text-ink']
   const draggable = !exportMode && !!dnd && !!course.requestId
- 
+
   return (
     <td colSpan={course.colSpan} className={`border-r border-line p-1 align-middle ${bg}`}>
       <div
@@ -86,13 +87,6 @@ function CourseCell({ course, exportMode, dnd, selected, onClick }) {
         }}
         onDragEnd={() => dnd?.onDragEnd()}
         onClick={onClick ? () => onClick(course) : undefined}
-        title={
-          draggable
-            ? 'Drag anywhere free, or onto "Unplaced retakes" to remove'
-            : !exportMode && dnd
-              ? 'Belongs to the group timetable (edit it in Scheduler)'
-              : undefined
-        }
         className={`rounded border ${border} bg-white shadow-xs space-y-0.5 ${exportMode ? 'p-1' : 'p-1.5'} ${
           draggable ? 'cursor-grab active:cursor-grabbing' : onClick ? 'cursor-pointer' : ''
         } ${selected ? 'ring-2 ring-navy-500 ring-offset-1' : ''}`}
@@ -115,7 +109,7 @@ function CourseCell({ course, exportMode, dnd, selected, onClick }) {
     </td>
   )
 }
- 
+
 function renderDayRows(dayName, items, exportMode, dnd, hover, setHover, selectedCourseId, onCourseClick) {
   const lanes = layoutLanes(items)
   return lanes.map((lane, laneIdx) => {
@@ -131,9 +125,9 @@ function renderDayRows(dayName, items, exportMode, dnd, hover, setHover, selecte
     for (; cursor <= TIME_SLOTS.length; cursor++) {
       cells.push(<EmptyCell key={`e-${cursor}`} dayName={dayName} slot={cursor} dnd={dnd} hover={hover} setHover={setHover} />)
     }
- 
+
     return (
-      <tr key={`${dayName}-${laneIdx}`} className={exportMode ? 'h-12' : SCREEN_ROW_H}>
+      <tr key={`${dayName}-${laneIdx}`} className={exportMode ? 'h-12' : ROW_H}>
         {laneIdx === 0 && (
           <td
             rowSpan={lanes.length}
@@ -149,14 +143,7 @@ function renderDayRows(dayName, items, exportMode, dnd, hover, setHover, selecte
     )
   })
 }
- 
-/**
- * 页面显示和 PDF 导出共用同一个组件
- * exportMode = true：PDF 设计（A4 横向、铺满整页、字号 9px、不显示 Student ID）—— 保持不变
- * exportMode = false：网页显示，尺寸已缩小
- * onCourseClick(course)：点击课程（只在网页用）
- * dnd：拖拽（只在网页用）{ dragSpan, isBlocked(day, start), onDragStart, onDragEnd, onDrop(day, start) }
- */
+
 export default function TimetableView({
   student,
   timetable,
@@ -166,6 +153,9 @@ export default function TimetableView({
   onCourseClick = null,
 }) {
   const [hover, setHover] = useState(null)
+  const colW = BASE_COL_W
+  const tableMinW = DAY_COL_W + SLOTS * colW
+
   return (
     <div className={exportMode ? 'bg-white' : 'space-y-3'}>
       {/* 学生信息头 */}
@@ -188,7 +178,7 @@ export default function TimetableView({
           </p>
         </div>
       </div>
- 
+
       {/* 时间表 */}
       <div
         className={`overflow-hidden rounded-lg border bg-white shadow-xs ${
@@ -209,12 +199,18 @@ export default function TimetableView({
             <span className="font-semibold text-ink">END:</span> {timetable.semesterEnd}
           </div>
         </div>
- 
+
         <div className={exportMode ? '' : 'overflow-x-auto'}>
           <table
             className={`w-full border-collapse text-ink ${exportMode ? 'text-[9px]' : 'text-[10px]'}`}
-            style={exportMode ? { tableLayout: 'fixed' } : { minWidth: SCREEN_TABLE_MIN_W }}
+            style={exportMode ? { tableLayout: 'fixed' } : { tableLayout: 'fixed', minWidth: tableMinW }}
           >
+            <colgroup>
+              <col style={{ width: exportMode ? 84 : DAY_COL_W }} />
+              {TIME_SLOTS.map((slot) => (
+                <col key={slot} style={exportMode ? undefined : { width: colW }} />
+              ))}
+            </colgroup>
             <thead>
               <tr
                 className={`border-b border-line font-semibold text-ink-3 ${
@@ -225,21 +221,31 @@ export default function TimetableView({
                   className={`border-r border-line text-left ${
                     exportMode
                       ? 'w-28 bg-slate-100 p-2'
-                      : `${SCREEN_DAY_COL_W} sticky left-0 z-10 bg-panel p-1.5`
+                      : 'sticky left-0 z-10 bg-panel p-1.5'
                   }`}
                 >
                   DAY / TIME
                 </th>
-                {TIME_SLOTS.map((slot) => (
-                  <th
-                    key={slot}
-                    className={`border-r border-line text-center ${
-                      exportMode ? 'p-1.5' : `${SCREEN_COL_W} p-1 text-[9px]`
-                    }`}
-                  >
-                    {slot}
-                  </th>
-                ))}
+                {TIME_SLOTS.map((slot) => {
+                  const [from, to] = slot.split('–')
+                  return (
+                    <th
+                      key={slot}
+                      className={`border-r border-line text-center ${
+                        exportMode ? 'p-1.5' : 'whitespace-nowrap p-1 text-[9px]'
+                      }`}
+                    >
+                      {exportMode ? (
+                        <>
+                          <span className="block" style={{ lineHeight: '10px' }}>{from}–</span>
+                          <span className="block" style={{ lineHeight: '10px' }}>{to}</span>
+                        </>
+                      ) : (
+                        slot
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-line">

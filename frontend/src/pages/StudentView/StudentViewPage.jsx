@@ -246,15 +246,15 @@ export default function StudentViewPage() {
  
         <div className="ml-auto flex items-center gap-2">
           <button
-            type="button"
-            onClick={handleExportBatch}
-            disabled={isExporting}
-            className="flex h-[30px] items-center gap-1.5 rounded border border-amber-500 bg-amber-50 px-3 text-[13px] font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isExporting
-              ? `⏳ Generating ${exportState.done}/${exportState.total}...`
-              : `Download All Retake PDFs (.zip) (${RETAKE_STUDENTS.length})`}
-          </button>
+          type="button"
+          onClick={handleExportBatch}
+          disabled={isExporting}
+          className={outline}
+        >
+          {isExporting
+            ? `⏳ Generating ${exportState.done}/${exportState.total}...`
+            : `Download All Retake PDFs (.zip) (${RETAKE_STUDENTS.length})`}
+        </button>
           <button
             type="button"
             disabled={unplaced.length > 0 || overlapping > 0}
