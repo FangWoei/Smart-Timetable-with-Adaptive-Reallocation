@@ -39,7 +39,6 @@ export const api = {
   importCommit: (file) => uploadCsv("/import/commit", file),
 
   getGroups: () => request("/groups"),
-  getClasses: () => request("/classes"), // 👈 补全了该方法，解决报错
   getHolidays: (start, end) =>
     request(`/holidays?start=${start}&end=${end}`),
   syncHolidays: (year, state) =>
@@ -73,6 +72,9 @@ function toneFor(code) {
   return TONE_KEYS[n % TONE_KEYS.length];
 }
 
+// 这条 entry 已经排进时间表（有星期和开始时间）
+export const isPlacedEntry = (e) => e.day != null && e.start_slot != null;
+
 function courseHues(entries) {
   const codes = [...new Set(entries.map((e) => e.class_code))].sort();
   return new Map(
@@ -83,19 +85,23 @@ function courseHues(entries) {
 /** Convert the API timetable into the shape TimetableGrid expects. */
 export function toGridGroups(timetable, counts = {}) {
   const byGroup = new Map();
-  const hues = courseHues(timetable.entries ?? []);
+  const placed = (timetable.entries ?? []).filter(isPlacedEntry);
+  const hues = courseHues(placed);
 
-  for (const e of timetable.entries ?? []) {
-    for (const g of e.groups) {
+  for (const e of placed) {
+    for (const g of e.groups ?? []) {
       if (!byGroup.has(g)) byGroup.set(g, []);
-      
+
       const rawStart = e.start_slot || 1;
       const startSlot = Math.round((rawStart - 1) * 2 + 1);
       const slotSpan = Math.round((e.hours || 2) * 2);
+      const entryId = e.id ?? e.entry_id ?? null;
 
       byGroup.get(g).push({
-        id: e.id || e.entry_id || `${e.class_code}-${e.day}-${rawStart}`,
+        id: entryId ?? `${e.class_code}-${e.day}-${rawStart}`,
+        entryId, // 真正的 entry id，拖拽保存时用它
         code: e.class_code,
+        name: e.module,
         module: e.module,
         day: e.day - 1, // API is 1-5, grid is 0-4
         startSlot: startSlot,
@@ -106,7 +112,7 @@ export function toGridGroups(timetable, counts = {}) {
         lecturer: e.lecturer,
         tone: toneFor(e.class_code),
         hue: hues.get(e.class_code),
-        shared: e.groups.length > 1,
+        shared: (e.groups ?? []).length > 1,
       });
     }
   }

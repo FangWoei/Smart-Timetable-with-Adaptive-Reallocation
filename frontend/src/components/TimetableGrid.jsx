@@ -1,4 +1,6 @@
 // src/components/TimetableGrid.jsx
+import { useEffect, useState } from 'react'
+
 const DAY_NAMES = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
 
 const TIME_SLOTS = [
@@ -59,13 +61,13 @@ function courseColors(lesson) {
 
 const shortDate = (d) => (d ? (d.length >= 5 ? d.slice(0, 5) : d) : '')
 
-// 核心：精准计算课程在半小时网格中的起始位与跨度
+// 精准计算课程在半小时网格中的起始位与跨度
 function toCells(lesson) {
-  const start = lesson.startSlot != null 
-    ? lesson.startSlot 
+  const start = lesson.startSlot != null
+    ? lesson.startSlot
     : (lesson.period != null ? lesson.period * 2 - 1 : 1)
-  const span = lesson.slotSpan != null 
-    ? lesson.slotSpan 
+  const span = lesson.slotSpan != null
+    ? lesson.slotSpan
     : ((lesson.span || 2) * 2)
   return { start, span: Math.max(1, Math.min(span, SLOTS - start + 1)) }
 }
@@ -87,6 +89,14 @@ function layoutDay(lessons) {
     lane.end = it.start + it.span
   }
   return lanes.length ? lanes : [{ end: 1, items: [] }]
+}
+
+// 拖放落点：贴齐整点（奇数格 = 每个小时的开头），并且不超出 19:00
+function snapStart(slot, span) {
+  let s = slot % 2 === 0 ? slot - 1 : slot
+  const max = SLOTS + 1 - span
+  if (s > max) s = max % 2 === 0 ? max - 1 : max
+  return Math.max(1, s)
 }
 
 function splitCode(raw) {
@@ -150,16 +160,20 @@ function ExportLessonCard({ lesson, colors, span, view }) {
   )
 }
 
-function LessonCard({ lesson, isSelected, colors, onClick }) {
+function LessonCard({ lesson, isSelected, colors, onClick, draggable, onDragStart, onDragEnd }) {
   const { conflict, startDate, endDate } = lesson
 
   return (
     <button
       type="button"
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       style={conflict ? undefined : { borderColor: colors.border }}
       className={[
-        'block w-full cursor-pointer space-y-1 overflow-hidden rounded border bg-white p-1.5 text-left shadow-xs transition-shadow hover:shadow-sm',
+        'block w-full space-y-1 overflow-hidden rounded border bg-white p-1.5 text-left shadow-xs transition-shadow hover:shadow-sm',
+        draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
         conflict ? 'border-red-300 outline outline-2 -outline-offset-2 outline-danger' : '',
         isSelected && !conflict ? 'ring-2 ring-navy-500 ring-offset-1' : '',
       ].join(' ')}
@@ -187,6 +201,13 @@ function LessonCard({ lesson, isSelected, colors, onClick }) {
   )
 }
 
+/**
+ * dnd（拖拽，只在网页用）：
+ *   drag        当前正在拖的东西：{ source: 'unplaced' | 'grid', lesson } 或 null
+ *   onDragStart({ source, lesson })
+ *   onDragEnd()
+ *   onDrop({ day, start, entityId })   start = 落点的第一个半小时格（已贴齐整点）
+ */
 export default function TimetableGrid({
   groups,
   selectedId,
@@ -194,16 +215,50 @@ export default function TimetableGrid({
   zoom = 100,
   selectedLesson,
   onLessonSelect,
-  onCellDrop,
+  dnd = null,
   exportMode = false,
   view = 'group',
 }) {
+  const [hover, setHover] = useState(null) // { day, start, blocked }
+
+  // 拖拽结束后清掉残留的高亮
+  useEffect(() => {
+    if (!dnd?.drag) setHover(null)
+  }, [dnd?.drag])
+
   const entity = groups.find((g) => g.id === selectedId) ?? groups[0]
   if (!entity) return null
+
+  const canDrag = !exportMode && !!dnd
+  const dragLesson = dnd?.drag?.lesson ?? null
+  const dragSource = dnd?.drag?.source ?? null
+  const dragSpan = canDrag && dragLesson ? (dragLesson.span || 2) * 2 : 0 // 拖的这门课占几个半小时格
 
   const colW = Math.round(BASE_COL_W * (zoom / 100))
   const tableMinW = DAY_COL_W + SLOTS * colW
   const subtitle = entity.title ?? (entity.count != null ? `${entity.count} students` : 'Active Intake')
+
+  // 正在被拖动的那节课本身（它原来的位置不算冲突）
+  const isDragged = (l) =>
+    dragSource === 'grid' &&
+    !!dragLesson &&
+    l.code === dragLesson.code &&
+    l.day === dragLesson.day &&
+    l.period === dragLesson.period
+
+  // 放在 start 开始会不会压到这张表里别的课
+  const isBlocked = (dayIdx, start) =>
+    entity.lessons.some((l) => {
+      if (l.day !== dayIdx || isDragged(l)) return false
+      const c = toCells(l)
+      return c.start < start + dragSpan && start < c.start + c.span
+    })
+
+  const startDrag = (e, lesson) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(lesson.code || lesson.id || ''))
+    dnd.onDragStart({ source: 'grid', lesson })
+  }
 
   return (
     <div className={exportMode ? 'space-y-2 bg-white' : 'space-y-3'}>
@@ -255,28 +310,38 @@ export default function TimetableGrid({
               {DAY_NAMES.map((dayName, dayIdx) => {
                 const lanes = layoutDay(entity.lessons.filter((l) => l.day === dayIdx))
 
-                const emptyCell = (dayIndex, slot) => {
-                  const canDrop = !exportMode && !!onCellDrop
+                // 空格子：拖拽时是放置目标。悬停时高亮这门课会占用的格子，压到别的课就是红色，不能放。
+                const emptyCell = (slot) => {
+                  const base = 'border-r border-line p-1'
+                  if (dragSpan === 0) return <td key={`e-${slot}`} className={base} />
+
+                  const start = snapStart(slot, dragSpan)
+                  const blocked = isBlocked(dayIdx, start)
+                  const lit =
+                    hover && hover.day === dayIdx && slot >= hover.start && slot < hover.start + dragSpan
 
                   return (
                     <td
                       key={`e-${slot}`}
-                      onDragOver={(e) => { if (canDrop) e.preventDefault() }}
-                      onDrop={(e) => {
-                        if (canDrop) {
-                          e.preventDefault()
-                          try {
-                            const raw = e.dataTransfer.getData('application/json')
-                            if (raw) {
-                              const lessonData = JSON.parse(raw)
-                              onCellDrop({ day: dayIndex, slot, lesson: lessonData })
-                            }
-                          } catch (err) {
-                            console.error(err)
-                          }
+                      onDragOver={(e) => {
+                        e.dataTransfer.dropEffect = blocked ? 'none' : 'move'
+                        if (!blocked) e.preventDefault() // 不 preventDefault = 不允许放（光标变禁止）
+                        if (!hover || hover.day !== dayIdx || hover.start !== start || hover.blocked !== blocked) {
+                          setHover({ day: dayIdx, start, blocked })
                         }
                       }}
-                      className={`border-r border-line p-1 ${canDrop ? 'cursor-pointer transition-colors hover:bg-navy-50/60' : ''}`}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        setHover(null)
+                        if (!blocked) dnd.onDrop({ day: dayIdx, start, entityId: entity.id })
+                      }}
+                      className={`${base} transition-colors ${
+                        lit
+                          ? hover.blocked
+                            ? 'bg-red-100'
+                            : 'bg-navy-100 outline outline-1 -outline-offset-1 outline-navy-500'
+                          : ''
+                      }`}
                     />
                   )
                 }
@@ -287,7 +352,7 @@ export default function TimetableGrid({
 
                   lane.items.forEach(({ lesson, start, span }) => {
                     for (; cursor < start; cursor++) {
-                      cells.push(emptyCell(dayIdx, cursor))
+                      cells.push(emptyCell(cursor))
                     }
                     const colors = courseColors(lesson)
                     const isSelected =
@@ -310,6 +375,9 @@ export default function TimetableGrid({
                             lesson={lesson}
                             isSelected={isSelected}
                             colors={colors}
+                            draggable={canDrag}
+                            onDragStart={(e) => startDrag(e, lesson)}
+                            onDragEnd={() => dnd?.onDragEnd()}
                             onClick={() => {
                               onSelect?.(entity.id)
                               onLessonSelect?.({ groupId: entity.id, lesson })
@@ -321,7 +389,7 @@ export default function TimetableGrid({
                     cursor = start + span
                   })
                   for (; cursor <= SLOTS; cursor++) {
-                    cells.push(emptyCell(dayIdx, cursor))
+                    cells.push(emptyCell(cursor))
                   }
 
                   return (

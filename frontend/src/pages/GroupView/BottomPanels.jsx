@@ -1,10 +1,21 @@
 // src/pages/GroupView/BottomPanels.jsx
 import React from 'react';
 
-export default function BottomPanels({ unplacedLessons = [], onAutoPlaceAll }) {
+const TONES = {
+  amber: { border: 'border-[#C58A1E]', bg: 'bg-[#FEFBF6]', title: 'text-[#C58A1E]' },
+  purple: { border: 'border-[#5B4B8A]', bg: 'bg-[#F9F8FC]', title: 'text-[#5B4B8A]' },
+  navy: { border: 'border-[#14406E]', bg: 'bg-[#F8FAFC]', title: 'text-[#14406E]' },
+};
+
+export default function BottomPanels({
+  unplacedLessons = [],
+  onAutoPlaceAll,
+  onLessonDragStart,
+  onLessonDragEnd,
+}) {
   return (
     <div className="mt-4 flex flex-col gap-4 shrink-0">
-      {/* Unplaced Lessons */}
+      {/* Unplaced Lessons：来自数据库、还没排进时间表的课程 */}
       <div className="rounded-md border border-line bg-white p-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -25,39 +36,26 @@ export default function BottomPanels({ unplacedLessons = [], onAutoPlaceAll }) {
 
         <div className="flex gap-3 overflow-x-auto pb-1 min-h-[76px]">
           {unplacedLessons.map((lesson) => {
-            const toneBorder =
-              lesson.tone === 'amber'
-                ? 'border-[#C58A1E]'
-                : lesson.tone === 'purple'
-                ? 'border-[#5B4B8A]'
-                : 'border-[#14406E]';
-            const toneBg =
-              lesson.tone === 'amber'
-                ? 'bg-[#FEFBF6]'
-                : lesson.tone === 'purple'
-                ? 'bg-[#F9F8FC]'
-                : 'bg-[#F8FAFC]';
-            const toneTitle =
-              lesson.tone === 'amber'
-                ? 'text-[#C58A1E]'
-                : lesson.tone === 'purple'
-                ? 'text-[#5B4B8A]'
-                : 'text-[#14406E]';
-
+            const tone = TONES[lesson.tone] || TONES.navy;
             return (
               <div
                 key={lesson.id || lesson.code}
                 draggable
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('application/json', JSON.stringify(lesson));
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', String(lesson.code || lesson.id));
+                  onLessonDragStart?.({ source: 'unplaced', lesson });
                 }}
-                className={`w-[180px] shrink-0 rounded border-t-2 ${toneBorder} border-x border-b border-line ${toneBg} p-2 cursor-grab active:cursor-grabbing shadow-xs transition-transform hover:-translate-y-0.5 select-none`}
+                onDragEnd={() => onLessonDragEnd?.()}
+                className={`w-[180px] shrink-0 rounded border-t-2 ${tone.border} border-x border-b border-line ${tone.bg} p-2 cursor-grab active:cursor-grabbing shadow-xs transition-transform hover:-translate-y-0.5 select-none`}
               >
-                <div className={`text-xs font-bold ${toneTitle}`}>{lesson.name || lesson.code}</div>
-                <div className="text-[11px] text-ink-3">
-                  {lesson.group || 'DB2601A'} · {lesson.span || 2} periods
+                <div className={`truncate text-xs font-bold ${tone.title}`}>{lesson.name || lesson.code}</div>
+                <div className="truncate text-[11px] text-ink-3">
+                  {lesson.group || '—'} · {lesson.span || 2} periods
                 </div>
-                <div className="text-[11px] text-ink-4 mt-1 truncate">{lesson.note || (lesson.needs_lab ? 'needs a lab' : 'needs a room')}</div>
+                <div className="text-[11px] text-ink-4 mt-1 truncate">
+                  {lesson.note || (lesson.needsLab ? 'needs a lab room' : 'needs a room')}
+                </div>
               </div>
             );
           })}
