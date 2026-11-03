@@ -101,8 +101,8 @@ def parse(path, sheet="Template 2", programmes=None):
             continue
 
         module, suffix = clean_module(row[COL_NAME])
-        count = _int(row[COL_STUDENTS])
-        groups.setdefault(group, count)
+        group_students = _int(row[COL_STUDENTS])
+        groups.setdefault(group, group_students)
 
         weekly = _int(row[COL_HOURS], 0)
         if weekly <= 0:
@@ -125,11 +125,7 @@ def parse(path, sheet="Template 2", programmes=None):
         })
         if group not in c["groups"]:
             c["groups"].append(group)
-            c["students"] += suffix if suffix else count
-
-        if suffix is None:
-            warnings.append(f"{code} / {group}: module name has no (n) suffix, "
-                            f"used STUDENT NO = {count}")
+            c["students"] += group_students                          # in the xlsx file: `+= count`
 
     return {
         "groups": groups,

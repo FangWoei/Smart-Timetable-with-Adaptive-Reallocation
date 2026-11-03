@@ -6,7 +6,11 @@ SLOTS = 10            # 08:30-18:30, 1 hour each
 MIDDAY = (4, 5)       # 12:30-13:30 and 13:30-14:30
 MAX_LECT_HOURS = 9
 MAX_GROUP_HOURS = 6
+MAX_BUSY_RUN = 4     # nobody works more than 2 two-hour classes (4 hours) in a row
 
+# Peninsula Advantage: Wednesday 14:30-16:30, nothing is scheduled.
+# {day number (1 = Mon): 0-based hour slots}
+BLOCKED = {3: (6, 7)}
 
 class SolverError(Exception):
     """Raised when no valid timetable can be built from the input."""
@@ -15,6 +19,33 @@ class SolverError(Exception):
 def slot_time(slot):
     m = 8 * 60 + 30 + slot * 60
     return f"{m // 60:02d}:{m % 60:02d}"
+
+def lecturer_blocked(data):
+    """{(lecturer, day0, slot0)} from data["unavailable"] = {name: [[day, slot], ...]} (1-based)."""
+    return {(lec, d - 1, s - 1)
+            for lec, cells in data.get("unavailable", {}).items() for d, s in cells}
+
+
+def start_allowed(lesson, d, s, unavailable):
+    """Hard time rules for a lesson starting at 0-based day d, slot s."""
+    if lesson["hours"] == 2 and s % 2:
+        return False                      # 2-hour classes use the fixed slots (8:30, 10:30, ...)
+    for t in range(s, s + lesson["hours"]):
+        if t in BLOCKED.get(d + 1, ()):
+            return False                  # Peninsula Advantage
+        if (lesson["lecturer"], d, t) in unavailable:
+            return False                  # lecturer is not available
+    return True
+
+
+def limit_runs(model, use, who):
+    """Hard: nobody is busy for more than MAX_BUSY_RUN hours in a row."""
+    for w in who:
+        for d in range(len(DAYS)):
+            for t in range(SLOTS - MAX_BUSY_RUN):
+                window = [v for u in range(t, t + MAX_BUSY_RUN + 1) for v in use[w, d, u]]
+                if window:
+                    model.add(sum(window) <= MAX_BUSY_RUN)
 
 
 def class_size(lesson, groups):
@@ -29,6 +60,7 @@ def solve(data, time_limit=10, seed=None):
     by_id = {l["id"]: l for l in lessons}
     size = {l["id"]: class_size(l, groups) for l in lessons}
     pinned = data.get("pinned", {})
+    unavailable = lecturer_blocked(data)
 
     model = cp_model.CpModel()
     x = {}
@@ -43,6 +75,8 @@ def solve(data, time_limit=10, seed=None):
                 continue
             for s in range(SLOTS - l["hours"] + 1):
                 if pin and pin["start_slot"] - 1 != s:
+                    continue
+                if not start_allowed(l, d, s, unavailable):
                     continue
                 for r, info in rooms.items():
                     if pin and pin["room"] != r:
@@ -76,20 +110,23 @@ def solve(data, time_limit=10, seed=None):
             for g in l["groups"]:
                 group_use[g, d, t].append(v)
 
+
     for use in (room_use, lect_use, group_use):
         for vs in list(use.values()):
             model.add_at_most_one(vs)
 
     penalties = []
 
-    # Soft: each group keeps at least 1 free hour at midday
-    for g in groups:
-        for d in range(len(DAYS)):
-            a = sum(group_use[g, d, MIDDAY[0]])
-            b = sum(group_use[g, d, MIDDAY[1]])
-            p = model.new_bool_var(f"nolunch_{g}_{d}")
-            model.add(a + b - 1 <= p)
-            penalties.append(10 * p)
+    for use in (room_use, lect_use, group_use):
+        for vs in list(use.values()):
+            model.add_at_most_one(vs)
+
+    # Hard: max 2 classes in a row for every lecturer and group (this is the
+    # rest rule; there is no fixed lunch break, free time is lunch)
+    limit_runs(model, lect_use, {l["lecturer"] for l in lessons})
+    limit_runs(model, group_use, groups)
+
+    penalties = []
 
     # Soft: lecturer max 9 teaching hours per day
     for lec in {l["lecturer"] for l in lessons}:

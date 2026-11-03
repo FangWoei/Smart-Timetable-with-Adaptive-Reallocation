@@ -20,10 +20,7 @@ def _id_map(sb, table, key):
 # ---------- WRITE INPUT DATA ----------
 def seed(sb, data):
     """Load class-format data (like cs_sep2026.json) into the input tables."""
-    rooms = [{"code": c, "capacity": r["cap"], "room_type": r["type"]}
-             for c, r in data["rooms"].items()]
-    sb.table("rooms").upsert(rooms, on_conflict="code").execute()
-
+        # Rooms are NOT seeded here. Real rooms are managed on the Rooms page.
     groups = [{"code": c, "student_count": n} for c, n in data["groups"].items()]
     sb.table("intake_groups").upsert(groups, on_conflict="code").execute()
 

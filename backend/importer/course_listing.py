@@ -97,11 +97,7 @@ def parse(path):
 
         if group not in c["groups"]:
             c["groups"].append(group)
-            c["students"] += suffix if suffix else group_students
-
-        if suffix is None:
-            warnings.append(f"{code} / {group}: module name has no (n) suffix, "
-                            f"used STUDENT NO = {group_students}")
+            c["students"] += group_students                          # in the xlsx file: `+= count`
 
     if classes and all(c["weekly_hours"] == DEFAULT_WEEKLY_HOURS for c in classes.values()):
         warnings.append(f"HOURS PER WEEK column is empty — "

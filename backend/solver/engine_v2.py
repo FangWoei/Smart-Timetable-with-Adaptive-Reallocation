@@ -3,8 +3,8 @@ from collections import defaultdict
 from ortools.sat.python import cp_model
 
 from solver.engine import (
-    DAYS, MAX_GROUP_HOURS, MAX_LECT_HOURS, MIDDAY, SLOTS,
-    SolverError, class_size, slot_time,
+    DAYS, MAX_GROUP_HOURS, MAX_LECT_HOURS, SLOTS, SolverError, class_size,
+    lecturer_blocked, limit_runs, slot_time, start_allowed,
 )
 
 
@@ -26,7 +26,7 @@ def _ok(status):
 
 
 # ---------- STAGE 1: decide WHEN each lesson happens ----------
-def plan_times(lessons, rooms, groups, size, pinned, time_limit, seed):
+def plan_times(lessons, rooms, groups, size, pinned, unavailable, time_limit, seed):
     model = cp_model.CpModel()
     x = {}
     lect_use, group_use = defaultdict(list), defaultdict(list)
@@ -42,6 +42,8 @@ def plan_times(lessons, rooms, groups, size, pinned, time_limit, seed):
                 continue
             for s in range(SLOTS - l["hours"] + 1):
                 if pin and pin["start_slot"] - 1 != s:
+                    continue
+                if not start_allowed(l, d, s, unavailable):
                     continue
                 v = model.new_bool_var(f"{l['id']}_{d}_{s}")
                 x[l["id"], d, s] = v
@@ -61,6 +63,11 @@ def plan_times(lessons, rooms, groups, size, pinned, time_limit, seed):
         for vs in use.values():
             model.add_at_most_one(vs)
 
+    # Hard: max 2 classes in a row for every lecturer and group (this is the
+    # rest rule; there is no fixed lunch break, free time is lunch)
+    limit_runs(model, lect_use, {l["lecturer"] for l in lessons})
+    limit_runs(model, group_use, groups)
+
     # Hard: two sessions of the same class never land on the same day
     for vs in class_day.values():
         model.add_at_most_one(vs)
@@ -78,15 +85,6 @@ def plan_times(lessons, rooms, groups, size, pinned, time_limit, seed):
                     if len(vs) > n_rooms:
                         model.add(sum(vs) <= n_rooms)
             prev = c
-
-    # Soft: lunch hour
-    for g in groups:
-        for d in range(len(DAYS)):
-            a = sum(group_use[g, d, MIDDAY[0]])
-            b = sum(group_use[g, d, MIDDAY[1]])
-            p = model.new_bool_var(f"nolunch_{g}_{d}")
-            model.add(a + b - 1 <= p)
-            penalties.append(10 * p)
 
     # Soft: lecturer max 9 hours/day
     for lec in {l["lecturer"] for l in lessons}:
@@ -167,7 +165,7 @@ def solve(data, time_limit=10, seed=None):
                    for i in rooms.values()):
             raise SolverError(f"No suitable room for {l['id']} {l['module']}")
 
-    times, pen1, st1 = plan_times(lessons, rooms, groups, size, pinned, time_limit, seed)
+    times, pen1, st1 = plan_times(lessons, rooms, groups, size, pinned, lecturer_blocked(data), time_limit, seed)
     assigned, pen2, st2 = assign_rooms(lessons, rooms, size, times, pinned, time_limit, seed)
 
     entries = []

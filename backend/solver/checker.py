@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from solver.engine import SLOTS, class_size
+from solver.engine import BLOCKED, DAYS, MAX_BUSY_RUN, SLOTS, class_size, lecturer_blocked, slot_time
 
 
 def check(data, entries):
@@ -18,6 +18,8 @@ def check(data, entries):
             problems.append(f"{lid} scheduled {counts[lid]} times")
 
     busy = {}
+    unavailable = lecturer_blocked(data)
+    hours_busy = defaultdict(set)         # (kind, who, day) -> 1-based hours in use
     class_days = defaultdict(set)
     for e in entries:
         lid = e["lesson_id"]
@@ -37,6 +39,18 @@ def check(data, entries):
         if start < 1 or start + l["hours"] - 1 > SLOTS:
             problems.append(f"{lid}: outside teaching hours")
 
+        day_name = DAYS[e["day"] - 1] if 1 <= e["day"] <= len(DAYS) else f"day {e['day']}"
+        if l["hours"] == 2 and (start - 1) % 2:
+            problems.append(f"{lid}: 2-hour classes must start at 8:30, 10:30, 12:30, 14:30 or 16:30")
+        for t in range(start, start + l["hours"]):
+            if (t - 1) in BLOCKED.get(e["day"], ()):
+                problems.append(f"{lid}: {day_name} {slot_time(t - 1)} is Peninsula Advantage, no classes")
+                break
+        for t in range(start, start + l["hours"]):
+            if (l["lecturer"], e["day"] - 1, t - 1) in unavailable:
+                problems.append(f"{lid}: {l['lecturer']} is not available on {day_name} at {slot_time(t - 1)}")
+                break
+
         cid = l.get("class_id", lid)
         if e["day"] in class_days[cid]:
             problems.append(f"{cid}: two sessions on day {e['day']}")
@@ -49,6 +63,8 @@ def check(data, entries):
             owners = [("room", e["room"]), ("lecturer", l["lecturer"])]
             owners += [("group", g) for g in l["groups"]]
             for kind, who in owners:
+                if kind != "room":
+                    hours_busy[kind, who, e["day"]].add(t)
                 key = (kind, who, e["day"], t)
                 if key in busy:
                     problems.append(
@@ -57,5 +73,16 @@ def check(data, entries):
                     )
                 else:
                     busy[key] = lid
+
+        # No more than MAX_BUSY_RUN hours in a row for any lecturer or group
+    for (kind, who, day), hours in hours_busy.items():
+        run = longest = 0
+        prev = None
+        for t in sorted(hours):
+            run = run + 1 if prev is not None and t == prev + 1 else 1
+            longest, prev = max(longest, run), t
+        if longest > MAX_BUSY_RUN:
+            problems.append(f"{kind} {who}: {longest} hours in a row on {DAYS[day - 1]}, "
+                            f"maximum is {MAX_BUSY_RUN} (2 classes)")
 
     return problems
