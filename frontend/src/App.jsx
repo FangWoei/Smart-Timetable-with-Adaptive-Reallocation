@@ -12,8 +12,8 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         {/* 将根路径直接重定向到 group-view */}
-        <Route index element={<Navigate to="/group-view" replace />} />
-        <Route path="home" element={<HomePage />} />
+        <Route index element={<HomePage />} />
+        <Route path="group" element={<Navigate to="/group-view" replace />} />
         <Route path="group-view" element={<GroupViewPage />} />
         <Route path="students" element={<StudentViewPage />} />
         <Route path="people" element={<ManagePeoplePage />} />
