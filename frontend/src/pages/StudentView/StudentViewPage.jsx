@@ -1,204 +1,295 @@
+// src/pages/StudentView/StudentViewPage.jsx
+// Retake students：和 Scheduler 同样的布局（顶部工具栏 / 左侧名单 / 中间课表 / 底部面板），
+// 但只处理重修学生。数据暂时是假数据（src/data/retakeData.js）。
+// 重修科目可以自由拖到任何空位；唯一的限制是不能压到学生原本的课。
 import { useMemo, useState } from 'react'
 import Badge from '../../components/Badge.jsx'
-import { STUDENTS } from '../../data/people.js'
-
+import {
+  DAYS, RETAKE_REQUESTS, RETAKE_STUDENTS, baseClashes, buildTimetable, clampStart,
+  generatePicks, requestStatus, slotStart, slotText, spanOf, studentById, studentStatus,
+  subjectName,
+} from '../../data/retakeData.js'
+import TimetableView from './TimetableView.jsx'
+import { exportBatchZip } from './exportPdf.jsx'
+ 
+const outline =
+  'flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-white px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50'
+const ghost =
+  'flex h-[30px] items-center gap-1.5 rounded bg-panel px-3 text-xs text-ink-2 hover:bg-line-2 disabled:cursor-not-allowed disabled:opacity-40'
+const select =
+  'h-[26px] rounded border border-line-strong bg-white px-1.5 text-xs outline-none focus:border-navy-500'
+ 
+const DOT = { clear: 'bg-ok', conflict: 'bg-danger', pending: 'bg-line-strong' }
+const DOT_TITLE = { clear: 'Placed, no overlap', conflict: 'Two retakes overlap', pending: 'Not placed yet' }
+const START_SLOTS = Array.from({ length: 21 }, (_, i) => i + 1)
+ 
+function Divider() {
+  return <span className="mx-1 h-7 w-px bg-line" aria-hidden />
+}
+ 
+const formatPeriod = (start, span) => (span === 1 ? `period ${start}` : `period ${start}–${start + span - 1}`)
+ 
+/** 点课表里的课程后右侧显示的信息栏 —— 和 Scheduler 的 LessonDetailsPanel 同一个设计 */
+function CourseDetails({ course, student, onClose, onRemove }) {
+  const isRetake = !!course.requestId
+  const periods = course.colSpan / 2 // 1 个 period = 1 小时
+  const firstPeriod = Math.floor((course.startSlot - 1) / 2) + 1
+  const day = course.day[0] + course.day.slice(1).toLowerCase()
+ 
+  // 假数据：以后接数据库
+  const seatsNeeded = isRetake ? 1 : 38
+  const seatsTotal = 40
+ 
+  return (
+    <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-l border-line bg-white p-5">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Selected Lesson
+          </div>
+          <h2 className="text-lg font-semibold text-ink">{course.name.replace(' (Retake)', '')}</h2>
+          <div className="mt-1 text-[13px] text-ink-3">
+            {student.baseGroup} · {day}, {formatPeriod(firstPeriod, periods)}
+          </div>
+        </div>
+        <button onClick={onClose} className="text-ink-4 hover:text-ink-2" aria-label="Close details">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M4 4l8 8m0-8l-8 8" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+ 
+      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 text-[13px]">
+        <div className="flex justify-between">
+          <span className="text-ink-3">Lecturer</span>
+          <span className="text-right text-ink">{course.instructor || '—'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-ink-3">Room</span>
+          <span className="text-right text-ink">{course.room || '—'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-ink-3">Seats needed</span>
+          <span className="text-right text-ink">{seatsNeeded} of {seatsTotal}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-ink-3">Duration</span>
+          <span className="text-right text-ink">{periods} periods, not split</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-ink-3">Position</span>
+          <span className="text-right text-ink">{isRetake ? 'unlocked' : 'locked'}</span>
+        </div>
+      </div>
+ 
+      {isRetake && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded border border-line-strong bg-white py-2 text-[13px] font-medium text-ink-2 hover:bg-panel"
+        >
+          Remove from timetable
+        </button>
+      )}
+    </aside>
+  )
+}
+ 
 export default function StudentViewPage() {
   const [query, setQuery] = useState('')
-  const [retakeOnly, setRetakeOnly] = useState(false)
-  const [selectedId, setSelectedId] = useState('2401019')
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true)
-
-  const timetableData = {
-    '2401019': {
-      programme: 'DIPLOMA IN BUSINESS (DB2601A)',
-      semesterStart: '05/01/2026',
-      semesterEnd: '24/04/2026',
-      courses: [
-        {
-          id: 'c1',
-          name: 'Business Statistics',
-          day: 'MONDAY',
-          startSlot: 1, 
-          colSpan: 3,  
-          timeStr: '08:00 – 09:30',
-          room: 'BR-201',
-          instructor: 'Dr. John Doe',
-          startDate: '05/01/2026',
-          endDate: '20/04/2026',
-          tone: 'navy'
-        },
-        {
-          id: 'c2',
-          name: 'Afternoon Lab Session',
-          day: 'MONDAY',
-          startSlot: 13, 
-          colSpan: 4,  
-          timeStr: '14:00 – 16:00',
-          room: 'BR-205',
-          instructor: 'Tech Team',
-          startDate: '12/01/2026',
-          endDate: '20/04/2026',
-          tone: 'amber'
-        },
-        {
-          id: 'c3',
-          name: 'Marketing Principles',
-          day: 'TUESDAY',
-          startSlot: 4,  
-          colSpan: 4,  
-          timeStr: '09:30 – 11:30',
-          room: 'BR-105',
-          instructor: 'Prof. Jane Smith',
-          startDate: '06/01/2026',
-          endDate: '21/04/2026',
-          tone: 'emerald'
-        },
-        {
-          id: 'c4',
-          name: 'Accounting II',
-          day: 'WEDNESDAY',
-          startSlot: 1,  
-          colSpan: 3,  
-          timeStr: '08:00 – 09:30',
-          room: 'BR-104',
-          instructor: 'Dr. Wang',
-          startDate: '07/01/2026',
-          endDate: '22/04/2026',
-          tone: 'amber',
-          isRetake: true
-        },
-        {
-          id: 'c5',
-          name: 'Microeconomics',
-          day: 'WEDNESDAY',
-          startSlot: 5,  
-          colSpan: 3,  
-          timeStr: '09:30 – 11:00',
-          room: 'BR-104',
-          instructor: 'Dr. Wang',
-          startDate: '07/01/2026',
-          endDate: '22/04/2026',
-          tone: 'amber',
-          isRetake: true
-        },
-        {
-          id: 'c6',
-          name: 'Business Law',
-          day: 'THURSDAY',
-          startSlot: 2,  
-          colSpan: 4,  
-          timeStr: '08:30 – 10:30',
-          room: 'BR-308',
-          instructor: 'Mr. Alan Lee',
-          startDate: '08/01/2026',
-          endDate: '23/04/2026',
-          tone: 'purple'
-        },
-        {
-          id: 'c7',
-          name: 'Accounting Catchup',
-          day: 'THURSDAY',
-          startSlot: 11, 
-          colSpan: 4,  
-          timeStr: '13:00 – 15:00',
-          room: 'BR-203',
-          instructor: 'Dr. Wang',
-          startDate: '08/01/2026',
-          endDate: '23/04/2026',
-          tone: 'amber'
-        },
-        {
-          id: 'c8',
-          name: 'Academic English',
-          day: 'FRIDAY',
-          startSlot: 1,  
-          colSpan: 4,  
-          timeStr: '08:00 – 10:00',
-          room: 'BR-112',
-          instructor: 'Ms. Sarah',
-          startDate: '09/01/2026',
-          endDate: '24/04/2026',
-          tone: 'blue'
-        },
-        {
-          id: 'c9',
-          name: 'Evening Seminar',
-          day: 'FRIDAY',
-          startSlot: 19, 
-          colSpan: 3,  
-          timeStr: '17:00 – 18:30',
-          room: 'Hall B',
-          instructor: 'Guest',
-          startDate: '09/01/2026',
-          endDate: '24/04/2026',
-          tone: 'emerald'
-        }
-      ]
-    }
-  }
-
+  const [selectedId, setSelectedId] = useState(RETAKE_STUDENTS[0].id)
+  const [picks, setPicks] = useState({}) // { requestId: { day, startSlot } }
+  const [dragReq, setDragReq] = useState(null) // 正在拖的 requestId
+  const [message, setMessage] = useState(null) // { text, bad }
+  const [busy, setBusy] = useState(false)
+  const [courseId, setCourseId] = useState(null) // 点开详情的课程 id
+  const [exportState, setExportState] = useState(null) // null | { done, total }
+  const isExporting = exportState !== null
+ 
+  const say = (text, bad = false) => setMessage({ text, bad })
+ 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return STUDENTS.filter(
-      (s) => (!retakeOnly || s.retake) && (!q || s.id.includes(q) || s.name.toLowerCase().includes(q)),
+    return RETAKE_STUDENTS.filter(
+      (s) => !q || s.id.includes(q) || s.name.toLowerCase().includes(q),
     )
-  }, [query, retakeOnly])
-
-  const student = STUDENTS.find((s) => s.id === selectedId) || STUDENTS[0]
-  const currentTimetable = timetableData[student.id] || timetableData['2401019']
-
-  // 将下午时间全部规范为 24 小时制 (13:00 开始)
-  const timeSlots = [
-    '08:00–08:30', '08:30–09:00', '09:00–09:30', '09:30–10:00',
-    '10:00–10:30', '10:30–11:00', '11:00–11:30', '11:30–12:00',
-    '12:00–12:30', '12:30–13:00', '13:00–13:30', '13:30–14:00',
-    '14:00–14:30', '14:30–15:00', '15:00–15:30', '15:30–16:00',
-    '16:00–16:30', '16:30–17:00', '17:00–17:30', '17:30–18:00',
-    '18:00–18:30', '18:30–19:00'
-  ]
-
-  const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
-
+  }, [query])
+ 
+  const student = studentById(selectedId) ?? RETAKE_STUDENTS[0]
+  const timetable = useMemo(() => buildTimetable(student, picks), [student, picks])
+ 
+  const course = timetable.courses.find((c) => c.id === courseId) ?? null // 换学生/取消后自动消失
+  const unplaced = RETAKE_REQUESTS.filter((r) => !picks[r.id])
+  const overlapping = RETAKE_REQUESTS.filter((r) => requestStatus(r, picks).clashes.length).length
+  const placedCount = RETAKE_REQUESTS.length - unplaced.length
+  const myRequests = RETAKE_REQUESTS.filter((r) => r.studentId === student.id)
+  const dragRequest = RETAKE_REQUESTS.find((r) => r.id === dragReq) ?? null
+ 
+  /** 把一门重修科目放到某天某格。压到学生原本的课就拒绝；其他位置随便放。 */
+  function placeRetake(requestId, day, startSlot) {
+    const req = RETAKE_REQUESTS.find((r) => r.id === requestId)
+    if (!req) return false
+    const span = spanOf(req.code)
+    const start = clampStart(startSlot, span)
+    const blockers = baseClashes(studentById(req.studentId), day, start, span)
+    if (blockers.length) {
+      say(`Can't place ${subjectName(req.code)} there — it would cover ${blockers[0].name}.`, true)
+      return false
+    }
+    setPicks((cur) => ({ ...cur, [requestId]: { day, startSlot: start } }))
+    say(`Placed ${subjectName(req.code)} on ${slotText({ day, startSlot: start, colSpan: span })}.`)
+    return true
+  }
+ 
+  function unplaceRetake(requestId) {
+    const req = RETAKE_REQUESTS.find((r) => r.id === requestId)
+    if (!req || !picks[requestId]) return
+    setPicks((cur) => {
+      const next = { ...cur }
+      delete next[requestId]
+      return next
+    })
+    say(`Removed ${subjectName(req.code)} from the timetable.`)
+  }
+ 
+  // Generate：给所有重修科目找空位（假数据，稍等一下模拟计算）
+  function handleGenerate() {
+    setBusy(true)
+    setMessage(null)
+    setTimeout(() => {
+      setPicks(generatePicks({}))
+      say(`Generated ${RETAKE_REQUESTS.length} retake timetables.`)
+      setBusy(false)
+    }, 600)
+  }
+ 
+  // 只排还没排的，已经排好的不动
+  function handleAutoPlaceRest() {
+    const n = unplaced.length
+    setPicks((cur) => generatePicks(cur))
+    say(`Placed ${n} remaining retake(s).`)
+  }
+ 
+  function handleVerify() {
+    if (unplaced.length) say(`${unplaced.length} retake(s) are not placed yet.`, true)
+    else if (overlapping) say(`${overlapping} retake(s) overlap another retake.`, true)
+    else say('No clashes found.')
+  }
+ 
+  function handleClear() {
+    setPicks({})
+    setMessage(null)
+  }
+ 
+  // 批量导出：所有重修学生，每人一个 PDF，打包成一个 ZIP（没排的会先自动排好，已排好的不动）
+  const handleExportBatch = async () => {
+    const full = generatePicks(picks)
+    const students = RETAKE_STUDENTS
+    const timetables = Object.fromEntries(students.map((s) => [s.id, buildTimetable(s, full)]))
+    setExportState({ done: 0, total: students.length })
+    try {
+      await exportBatchZip(students, timetables, (done, total) => setExportState({ done, total }))
+    } catch (err) {
+      console.error(err)
+      alert('Failed to generate PDF bundle.')
+    } finally {
+      setExportState(null)
+    }
+  }
+ 
+  // ---------- 拖拽 ----------
+  function startDrag(requestId) {
+    const req = RETAKE_REQUESTS.find((r) => r.id === requestId)
+    setDragReq(requestId)
+    if (req) setSelectedId(req.studentId) // 拖别的学生的课，先切到他的课表
+  }
+ 
+  const dnd = {
+    dragSpan: dragRequest ? spanOf(dragRequest.code) : 0,
+    isBlocked: (day, start) =>
+      !!dragRequest &&
+      baseClashes(studentById(dragRequest.studentId), day, start, spanOf(dragRequest.code)).length > 0,
+    onDragStart: startDrag,
+    onDragEnd: () => setDragReq(null),
+    onDrop: (day, start) => {
+      const id = dragReq
+      setDragReq(null)
+      if (id) placeRetake(id, day, start)
+    },
+  }
+ 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-panel">
-      {/* 顶部操作与筛选栏 */}
-      <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-line bg-white px-4">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by student ID or name…"
-          aria-label="Search students"
-          className="h-[30px] w-64 rounded border border-line bg-panel px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
-        />
-        <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer select-none">
-          <input 
-            type="checkbox" 
-            checked={retakeOnly} 
-            onChange={(e) => setRetakeOnly(e.target.checked)} 
-            className="rounded border-line-strong text-navy-700 focus:ring-navy-500"
-          />
-          Retake students only
-        </label>
-        <div className="ml-auto flex gap-2">
-          <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-3 text-[13px] font-medium text-ink-2 hover:bg-panel">
-            Bulk-assign retakes
-          </button>
-          <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-3 text-[13px] font-medium text-ink-2 hover:bg-panel">
-            Export student list
+      {/* 顶部工具栏（和 Scheduler 同款） */}
+      <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-white px-3">
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={busy}
+          className="flex h-[30px] items-center gap-2 rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:opacity-60"
+        >
+          <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden><path d="M0 0 L10 6 L0 12 Z" fill="currentColor" /></svg>
+          {busy ? 'Generating…' : 'Generate'}
+        </button>
+        <button type="button" onClick={handleVerify} className={outline}>
+          <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden>
+            <path d="M1 6 l4 4 l8 -9" fill="none" stroke="#2E7D5B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Verify
+        </button>
+ 
+        <Divider />
+ 
+        <button type="button" onClick={handleClear} disabled={placedCount === 0} className={ghost}>
+          Clear
+        </button>
+ 
+        <div className="ml-auto flex items-center gap-2">
+          <button
+          type="button"
+          onClick={handleExportBatch}
+          disabled={isExporting}
+          className={outline}
+        >
+          {isExporting
+            ? `⏳ Generating ${exportState.done}/${exportState.total}...`
+            : `Download All Retake PDFs (.zip) (${RETAKE_STUDENTS.length})`}
+        </button>
+          <button
+            type="button"
+            disabled={unplaced.length > 0 || overlapping > 0}
+            className="flex h-[30px] items-center rounded bg-ok px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Approve draft
           </button>
         </div>
       </div>
-
-      {/* 主体布局 */}
+ 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* 左侧：学生名单侧边栏 */}
-        <aside className="flex w-[240px] shrink-0 flex-col border-r border-line bg-white">
-          <div className="px-3 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-            Students — DB2601A ({STUDENTS.length})
+        {/* 左侧：重修学生名单 */}
+        <aside className="flex w-[220px] shrink-0 flex-col border-r border-line bg-white">
+          <div className="p-3">
+            <label className="flex h-[30px] items-center gap-2 rounded border border-line bg-panel px-2.5 focus-within:border-navy-500">
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden fill="none" stroke="#8592A3" strokeWidth="1.5" strokeLinecap="round">
+                <circle cx="6" cy="6" r="4.5" /><path d="M9.5 9.5 L13 13" />
+              </svg>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search ID or name…"
+                aria-label="Search retake students"
+                className="w-full bg-transparent text-xs text-ink outline-none placeholder:text-ink-4"
+              />
+            </label>
           </div>
-          <ul className="min-h-0 flex-1 overflow-y-auto divide-y divide-line-2">
+          <div className="flex items-center px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Retake students
+            <span className="ml-auto font-normal">{RETAKE_STUDENTS.length}</span>
+          </div>
+          <ul className="min-h-0 flex-1 overflow-y-auto">
             {list.map((s) => {
               const active = s.id === selectedId
+              const st = studentStatus(s.id, picks)
               return (
                 <li key={s.id}>
                   <button
@@ -210,233 +301,204 @@ export default function StudentViewPage() {
                       active ? 'border-navy-700 bg-navy-50 font-semibold text-navy-700' : 'border-transparent text-ink-2 hover:bg-panel',
                     ].join(' ')}
                   >
-                    <span className="w-12 font-mono text-ink-4 shrink-0">{s.id}</span>
-                    <span className="truncate flex-1">{s.name}</span>
-                    {s.retake && <span className="ml-auto shrink-0"><Badge tone="warn">RT</Badge></span>}
+                    <span className="w-12 shrink-0 font-mono text-ink-4">{s.id}</span>
+                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span title={DOT_TITLE[st]} className={`size-2 shrink-0 rounded-full ${DOT[st]}`} />
                   </button>
                 </li>
               )
             })}
             {list.length === 0 && <li className="px-4 py-3 text-xs text-ink-4">No students match</li>}
           </ul>
-          <div className="border-t border-line-2 px-3 py-2.5 text-[11px] text-ink-4 bg-white flex justify-between items-center">
-            <span>18 students</span>
-            <span className="font-medium text-amber-800">3 on retake</span>
+          <div className="flex items-center justify-between border-t border-line-2 px-3 py-2.5 text-[11px] text-ink-4">
+            <span>{RETAKE_REQUESTS.length} retakes</span>
+            <span className="font-medium text-amber-800">{placedCount} placed</span>
           </div>
         </aside>
-
-        {/* 中间：类教务大表网格课表 */}
-        <main className="min-w-0 flex-1 overflow-y-auto p-5 space-y-5">
-          {student && (
-            <>
-              {/* 学生基础信息头 */}
-              <div className="flex items-start justify-between bg-white p-4 rounded-lg border border-line shadow-xs">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">Student ID {student.id}</p>
-                  <h1 className="text-xl font-bold text-ink mt-0.5">{student.name}</h1>
-                  <p className="text-xs text-ink-3 mt-1">Base group DB2601A · Diploma in Business, Year 1</p>
+ 
+        {/* 中间：状态行 + 课表 + 底部面板 */}
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+          <div className="flex shrink-0 items-center gap-4 px-4 pb-2 pt-3">
+            <h1 className="text-[15px] font-semibold text-ink">
+              {RETAKE_STUDENTS.length} retake students · {RETAKE_REQUESTS.length} retakes
+            </h1>
+            {message && (
+              <p className={`text-xs font-medium ${message.bad ? 'text-danger' : 'text-navy-700'}`}>{message.text}</p>
+            )}
+          </div>
+ 
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+            {/* 课表（和导出的 PDF 使用同一个 TimetableView） */}
+            <TimetableView
+              student={student}
+              timetable={timetable}
+              dnd={dnd}
+              selectedCourseId={course?.id}
+              onCourseClick={(c) => setCourseId((cur) => (cur === c.id ? null : c.id))}
+            />
+ 
+            {/* 还没排的重修科目：也是拖回来取消的地方 */}
+            <section
+              onDragOver={(e) => {
+                if (dragRequest && picks[dragRequest.id]) e.preventDefault()
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const id = dragReq
+                setDragReq(null)
+                if (id) unplaceRetake(id)
+              }}
+              className={`rounded-md border bg-white p-3 transition-colors ${
+                dragRequest && picks[dragRequest.id] ? 'border-dashed border-navy-500 bg-navy-50' : 'border-line'
+              }`}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-[13px] font-semibold text-ink">Unplaced retakes</h3>
+                  <span className="flex size-5 items-center justify-center rounded-full bg-[#FBE2E6] text-[10px] font-bold text-danger">
+                    {unplaced.length}
+                  </span>
+                  <span className="ml-2 text-xs text-ink-3">Drag a card onto the timetable, or let the scheduler place it</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  {student.retake && <span className="mt-1"><Badge tone="warn">Retaking 1 subject</Badge></span>}
-                  <button 
-                    type="button"
-                    onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-                    className="rounded border border-line-strong bg-panel px-3 py-1.5 text-xs font-medium text-ink-2 hover:bg-white transition-colors"
-                  >
-                    {isRightSidebarOpen ? 'Hide Queue Sidebar' : 'Show Queue Sidebar'}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoPlaceRest}
+                  disabled={unplaced.length === 0}
+                  className="rounded border border-line-strong bg-panel px-3 py-1 text-xs font-medium text-ink-2 transition-colors hover:bg-line-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Auto-place all
+                </button>
               </div>
-
-              {/* 教务风时间大表容器 */}
-              <div className="rounded-lg border border-line bg-white shadow-xs overflow-hidden">
-                <div className="grid grid-cols-2 border-b border-line bg-panel px-4 py-2.5 text-[11px] text-ink-3">
-                  <div>
-                    <span className="font-semibold text-ink">PROGRAMME:</span> {currentTimetable.programme}
+              <div className="flex min-h-[64px] gap-3 overflow-x-auto pb-1">
+                {unplaced.map((r) => {
+                  const s = studentById(r.studentId)
+                  return (
+                    <div
+                      key={r.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'move'
+                        e.dataTransfer.setData('text/plain', r.id)
+                        startDrag(r.id)
+                      }}
+                      onDragEnd={() => setDragReq(null)}
+                      className="w-[190px] shrink-0 cursor-grab select-none rounded border border-b border-line border-t-2 border-t-[#C58A1E] bg-[#FEFBF6] p-2 shadow-xs transition-transform hover:-translate-y-0.5 active:cursor-grabbing"
+                    >
+                      <div className="truncate text-xs font-bold text-[#C58A1E]">{subjectName(r.code)}</div>
+                      <div className="truncate text-[11px] text-ink-3">{r.code} · {spanOf(r.code) / 2}h</div>
+                      <div className="mt-1 truncate text-[11px] text-ink-4">{s.id} · {s.name}</div>
+                    </div>
+                  )
+                })}
+                {unplaced.length === 0 && (
+                  <div className="flex w-full items-center justify-center py-3 text-xs text-ink-4">
+                    All retakes have been placed.
                   </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-ink">SEMESTER START:</span> {currentTimetable.semesterStart} &nbsp;|&nbsp; <span className="font-semibold text-ink">END:</span> {currentTimetable.semesterEnd}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[11px] text-ink min-w-[1800px]">
-                    <thead>
-                      <tr className="border-b border-line bg-panel font-semibold text-ink-3">
-                        <th className="border-r border-line p-2 text-left w-28 sticky left-0 bg-panel z-10">DAY / TIME</th>
-                        {timeSlots.map((slot, idx) => (
-                          <th key={idx} className="border-r border-line p-1.5 text-center w-24">{slot}</th>
-                        ))}
+                )}
+              </div>
+            </section>
+ 
+            {/* 当前学生的重修科目：也可以用下拉框精确调整 */}
+            <section className="rounded-md border border-line bg-white p-3">
+              <div className="mb-3 flex items-center gap-3">
+                <h3 className="text-[13px] font-semibold text-ink">{student.name}’s retakes</h3>
+                <span className="text-xs text-ink-3">drag on the timetable, or set the day and time here</span>
+              </div>
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-line-2 text-ink-4">
+                    <th className="pb-2 font-normal">Subject</th>
+                    <th className="pb-2 font-normal">Day</th>
+                    <th className="pb-2 font-normal">Start</th>
+                    <th className="pb-2 font-normal">Slot</th>
+                    <th className="pb-2 font-normal">Check</th>
+                  </tr>
+                </thead>
+                <tbody className="text-ink-2">
+                  {myRequests.map((r) => {
+                    const st = requestStatus(r, picks)
+                    const span = spanOf(r.code)
+                    return (
+                      <tr key={r.id} className="border-b border-line-2 last:border-0">
+                        <td className="py-2 font-medium text-ink">{subjectName(r.code)}</td>
+                        <td className="py-2">
+                          <select
+                            value={st.place?.day ?? ''}
+                            onChange={(e) =>
+                              e.target.value
+                                ? placeRetake(r.id, e.target.value, st.place?.startSlot ?? 1)
+                                : unplaceRetake(r.id)
+                            }
+                            aria-label={`Day for ${subjectName(r.code)}`}
+                            className={select}
+                          >
+                            <option value="">— not placed —</option>
+                            {DAYS.map((d) => (
+                              <option key={d} value={d}>{d[0] + d.slice(1).toLowerCase()}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-2">
+                          <select
+                            value={st.place?.startSlot ?? ''}
+                            disabled={!st.placed}
+                            onChange={(e) => placeRetake(r.id, st.place.day, Number(e.target.value))}
+                            aria-label={`Start time for ${subjectName(r.code)}`}
+                            className={select}
+                          >
+                            {!st.placed && <option value="">—</option>}
+                            {START_SLOTS.filter((n) => n + span - 1 <= 21).map((n) => (
+                              <option key={n} value={n}>{slotStart(n)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-2">{st.place ? `${slotText({ ...st.place, colSpan: span })}` : '—'}</td>
+                        <td className="py-2">
+                          {!st.placed ? (
+                            <Badge>not placed</Badge>
+                          ) : st.clashes.length ? (
+                            <Badge tone="danger">overlaps {st.clashes.length}</Badge>
+                          ) : (
+                            <Badge tone="ok">clear</Badge>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {days.map((dayName) => {
-                        const dayCourses = currentTimetable.courses.filter(c => c.day === dayName)
-                        
-                        return (
-                          <tr key={dayName} className="hover:bg-panel/40 transition-colors h-16">
-                            <td className="border-r border-line p-2.5 font-bold bg-white sticky left-0 z-10 text-ink">{dayName}</td>
-                            
-                            {(() => {
-                              let currentSlotIndex = 1
-                              const cells = []
-                              const sortedDayCourses = [...dayCourses].sort((a, b) => a.startSlot - b.startSlot)
-
-                              sortedDayCourses.forEach((course) => {
-                                while (currentSlotIndex < course.startSlot) {
-                                  cells.push(
-                                    <td key={`empty-${dayName}-${currentSlotIndex}`} className="border-r border-line p-1.5"></td>
-                                  )
-                                  currentSlotIndex++
-                                }
-
-                                const toneClasses = {
-                                  navy: 'bg-navy-50/40 border-navy-200 text-navy-900',
-                                  amber: 'bg-amber-50/50 border-amber-300 text-amber-900',
-                                  emerald: 'bg-emerald-50/40 border-emerald-200 text-emerald-900',
-                                  purple: 'bg-purple-50/40 border-purple-200 text-purple-900',
-                                  blue: 'bg-blue-50/40 border-blue-200 text-blue-900'
-                                }[course.tone] || 'bg-panel border-line text-ink'
-
-                                cells.push(
-                                  <td key={course.id} colSpan={course.colSpan} className={`border-r border-line p-1.5 align-middle ${toneClasses.split(' ')[0]}`}>
-                                    <div className={`rounded border ${toneClasses.split(' ')[1]} bg-white p-2 shadow-xs space-y-1`}>
-                                      <div className="flex justify-between items-center gap-2">
-                                        <p className={`font-bold ${toneClasses.split(' ')[2]} text-[11px] leading-tight`}>{course.name}</p>
-                                        <span className="text-[9px] text-ink-4 bg-panel px-1.5 py-0.5 rounded shrink-0 font-mono" title={`Active: ${course.startDate} to ${course.endDate}`}>
-                                          {course.startDate.slice(0, 5)} ~ {course.endDate.slice(0, 5)}
-                                        </span>
-                                      </div>
-                                      <p className="text-[10px] text-ink-3">{course.instructor} · {course.room}</p>
-                                    </div>
-                                  </td>
-                                )
-                                currentSlotIndex += course.colSpan
-                              })
-
-                              while (currentSlotIndex <= 22) {
-                                cells.push(
-                                  <td key={`empty-end-${dayName}-${currentSlotIndex}`} className="border-r border-line p-1.5"></td>
-                                )
-                                currentSlotIndex++
-                              }
-
-                              return cells
-                            })()}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* 底部调整卡片 */}
-              <div className="rounded-lg border border-amber-300 bg-amber-50/70 p-4 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">Retake: Microeconomics</h3>
-                    <span className="rounded bg-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-900">scheduled</span>
-                  </div>
-                </div>
-
-                <div className="divide-y divide-amber-200/60 text-xs text-ink-2">
-                  <div className="py-1.5 flex justify-between">
-                    <span className="text-ink-3">Original attempt</span>
-                    <span className="font-medium text-ink">DB2601A, Aug 2025 intake — failed</span>
-                  </div>
-                  <div className="py-1.5 flex justify-between">
-                    <span className="text-ink-3">Constraint</span>
-                    <span className="font-medium text-ink">must not conflict with current timetable</span>
-                  </div>
-                  <div className="py-1.5 flex justify-between">
-                    <span className="text-ink-3">Placed slot</span>
-                    <span className="font-medium text-ink">Wed 09:30–11:00 (07/01/2026 – 22/04/2026) · BR-104 · Dr Wang</span>
-                  </div>
-                  <div className="py-1.5 flex justify-between">
-                    <span className="text-ink-3">Schedule status</span>
-                    <span className="font-medium text-amber-800">aligned with alternate retake window</span>
-                  </div>
-                </div>
-
-                <div className="rounded-md bg-white p-3 border border-amber-200 flex items-center justify-between gap-4">
-                  <p className="text-xs text-ink leading-relaxed">
-                    <span className="font-semibold text-amber-900">Suggested:</span> assign this student to the Thursday Accounting II group catch-up section to balance weekly contact hours.
-                  </p>
-                  <button type="button" className="shrink-0 rounded bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors">
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+                    )
+                  })}
+                  {myRequests.length === 0 && (
+                    <tr><td colSpan={5} className="py-3 text-ink-4">No retake subjects.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </section>
+          </div>
         </main>
-
-        {/* 右侧：Retake 队列与冲突侧边栏（可折叠） */}
-        {isRightSidebarOpen && (
-          <aside className="flex w-[280px] shrink-0 flex-col border-l border-line bg-white overflow-y-auto p-3.5 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wide text-ink-4">Retake Queue</h2>
-                <p className="text-[11px] text-ink-3 mt-0.5">7 students across 5 subjects</p>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setIsRightSidebarOpen(false)}
-                className="text-xs text-ink-4 hover:text-ink font-bold px-1.5 py-0.5 rounded border border-line"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <div className="rounded-md border border-navy-500 bg-navy-50 p-2.5 text-xs space-y-1">
-                <div className="font-bold text-navy-900">2401019 · Nur Aisyah B.</div>
-                <div className="text-ink-2">Microeconomics — placed, scheduled safely</div>
-              </div>
-
-              <div className="rounded-md border border-red-300 bg-red-50 p-2.5 text-xs space-y-1">
-                <div className="font-bold text-red-900">2401011 · Tan Wei Jie</div>
-                <div className="text-red-800">Business Law — conflicts with retake slot DB2601A</div>
-              </div>
-
-              <div className="rounded-md border border-line bg-panel p-2.5 text-xs space-y-1">
-                <div className="font-bold text-ink">2401013 · Arvind Kumar</div>
-                <div className="text-ink-1">Accounting I — placed, no conflict DB2601A</div>
-              </div>
-            </div>
-
-            <div className="border-t border-line pt-3.5 space-y-3">
-              <div>
-                <p className="font-mono text-xs font-bold text-ink">2401011 — Tan Wei Jie</p>
-                <p className="text-[11px] text-ink-4">Retaking Business Law</p>
-              </div>
-
-              <div className="text-xs space-y-1.5 bg-panel p-3 rounded-md border border-line">
-                <div className="flex justify-between"><span className="text-ink-3">Base group</span><span className="font-medium">DB2601A</span></div>
-                <div className="flex justify-between"><span className="text-ink-3">Retake section</span><span className="font-medium">HM2601A, Thu 13:00</span></div>
-                <div className="flex justify-between"><span className="text-ink-3">Conflict</span><span className="font-medium text-red-600">own Business Law lecture</span></div>
-                <div className="flex justify-between"><span className="text-ink-3">Same subject?</span><span className="font-medium">yes — attends either, not both</span></div>
-              </div>
-
-              <div className="rounded-md border border-line bg-white p-3 space-y-2">
-                <p className="text-xs font-bold text-ink">Suggested fix?</p>
-                <p className="text-[11px] text-ink-3 leading-relaxed">
-                  Re-route attendance to the alternate retake lecture slot.
-                </p>
-                <div className="flex gap-2 pt-1">
-                  <button type="button" className="flex-1 rounded bg-navy-700 py-1.5 text-xs font-semibold text-white hover:bg-navy-900 transition-colors">
-                    Apply fix
-                  </button>
-                  <button type="button" className="flex-1 rounded border border-line-strong py-1.5 text-xs font-medium text-ink-2 hover:bg-panel transition-colors">
-                    Reassign slot
-                  </button>
-                </div>
-              </div>
-            </div>
-          </aside>
+ 
+        {/* 右侧：点开课程后显示课程信息 */}
+        {course && (
+          <CourseDetails
+            course={course}
+            student={student}
+            onClose={() => setCourseId(null)}
+            onRemove={() => {
+              unplaceRetake(course.requestId)
+              setCourseId(null)
+            }}
+          />
         )}
       </div>
+ 
+      {/* 底部状态栏（和 Scheduler 同款） */}
+      <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-line-strong bg-[#E8EDF4] px-4 text-[11px] text-ink-3">
+        <span className="text-ink">{placedCount} of {RETAKE_REQUESTS.length} retakes placed</span>
+        <span className="flex items-center gap-1.5 font-medium text-danger">
+          <span className="size-1.5 rounded-full bg-danger" />
+          {overlapping} overlaps
+        </span>
+        <span className="ml-auto text-ink-4">Sample data — not connected to the database yet</span>
+      </footer>
     </div>
   )
 }
+ 
+ 

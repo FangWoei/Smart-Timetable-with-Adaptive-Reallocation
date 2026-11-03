@@ -3,7 +3,13 @@ import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Tabs from '../../components/Tabs.jsx'
 import Badge from '../../components/Badge.jsx'
-import { LECTURERS } from '../../data/people.js'
+import { LECTURERS as INITIAL_LECTURERS } from '../../data/people.js'
+
+// 为现有模拟数据默认补全 type ('full-time' 或 'part-time')
+const LECTURERS = INITIAL_LECTURERS.map((l, index) => ({
+  ...l,
+  type: l.type || (index % 2 === 0 ? 'full-time' : 'part-time')
+}))
 
 // 模拟科目数据
 const SUBJECTS = [
@@ -99,9 +105,20 @@ const SUBJECTS = [
   },
 ]
 
+// 模拟教室数据（含维修状态 status）
+const ROOMS = [
+  { id: 'BR-101', name: 'BR-101', type: 'Standard room', capacity: 40, status: 'available' },
+  { id: 'BR-104', name: 'BR-104', type: 'Standard room', capacity: 45, status: 'available' },
+  { id: 'BR-305', name: 'BR-305', type: 'Lecture hall', capacity: 80, status: 'maintenance' },
+  { id: 'BR-308', name: 'BR-308', type: 'Standard room', capacity: 40, status: 'available' },
+  { id: 'LAB-01', name: 'LAB-01', type: 'Computer lab', capacity: 30, status: 'available' },
+  { id: 'LAB-02', name: 'LAB-02', type: 'Computer lab', capacity: 30, status: 'out_of_service' },
+]
+
 const TABS = [
   { id: 'lecturers', label: 'Lecturers' },
   { id: 'subjects', label: 'Subjects' },
+  { id: 'rooms', label: 'Rooms' },
 ]
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr']
@@ -116,6 +133,7 @@ function availability(l) {
 // 讲师子组件
 function LecturersTab() {
   const [query, setQuery] = useState('')
+  const [filterType, setFilterType] = useState('all') // 'all' | 'full-time' | 'part-time'
   const [lecturers, setLecturers] = useState(LECTURERS)
   const [selectedId, setSelectedId] = useState(null)
   const [editForm, setEditForm] = useState(null)
@@ -131,8 +149,12 @@ function LecturersTab() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return lecturers.filter((l) => !q || l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q))
-  }, [query, lecturers])
+    return lecturers.filter((l) => {
+      const matchesQuery = !q || l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q)
+      const matchesType = filterType === 'all' || l.type === filterType
+      return matchesQuery && matchesType
+    })
+  }, [query, filterType, lecturers])
 
   const handleSave = async () => {
     if (!editForm) return
@@ -159,12 +181,15 @@ function LecturersTab() {
     }
   }
 
+  // 切换时间格子的逻辑（仅对 part-time 生效）
   const toggleSlot = (day, slot) => {
     if (!editForm) return
+    if (editForm.type === 'full-time') return
+
     const currentAvail = editForm.availability || {}
     const key = `${day}-${slot}`
-    const currentStatus = currentAvail[key] || 'open'
-    const nextStatus = currentStatus === 'open' ? 'busy' : currentStatus === 'busy' ? 'unavailable' : 'open'
+    const currentStatus = currentAvail[key] || 'available'
+    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available'
 
     setEditForm({
       ...editForm,
@@ -178,14 +203,40 @@ function LecturersTab() {
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       <div className="min-w-0 flex-1 flex flex-col">
-        <div className="mb-3 flex items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search lecturers…"
-            aria-label="Search lecturers"
-            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
-          />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search lecturers…"
+              aria-label="Search lecturers"
+              className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+            />
+          </div>
+          {/* 全职 / 兼职 快速筛选按钮 */}
+          <div className="flex items-center gap-1 rounded bg-panel p-0.5 border border-line text-xs">
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'all' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              All ({lecturers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('full-time')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'full-time' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              Full-time ({lecturers.filter(l => l.type === 'full-time').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('part-time')}
+              className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === 'part-time' ? 'bg-white text-ink shadow-sm' : 'text-ink-3 hover:text-ink'}`}
+            >
+              Part-time ({lecturers.filter(l => l.type === 'part-time').length})
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
@@ -193,6 +244,7 @@ function LecturersTab() {
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
                 <th className="px-3 py-2 font-semibold">Lecturer</th>
+                <th className="px-3 py-2 font-semibold">Employment</th>
                 <th className="px-3 py-2 font-semibold">Subjects taught</th>
                 <th className="px-3 py-2 font-semibold">Weekly hours</th>
                 <th className="px-3 py-2 font-semibold">Availability</th>
@@ -203,6 +255,7 @@ function LecturersTab() {
               {rows.map((l) => {
                 const a = availability(l)
                 const active = l.id === selectedId
+                const isFullTime = l.type === 'full-time'
                 return (
                   <tr
                     key={l.id}
@@ -217,6 +270,11 @@ function LecturersTab() {
                         <div className="font-medium text-ink">{l.name}</div>
                         <div className="text-ink-4 text-[11px]">{l.email}</div>
                       </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                        {isFullTime ? 'Full-time' : 'Part-time'}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-ink-2">{l.subjects?.join(', ') || 'None'}</td>
                     <td className="px-3 py-2 text-ink-2">{l.hours} / {l.cap} hrs</td>
@@ -238,7 +296,7 @@ function LecturersTab() {
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-ink-4">No lecturers found.</td>
+                  <td colSpan="6" className="py-8 text-center text-ink-4">No lecturers found.</td>
                 </tr>
               )}
             </tbody>
@@ -272,6 +330,18 @@ function LecturersTab() {
             />
           </label>
 
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Employment Type
+            <select
+              value={editForm.type || 'full-time'}
+              onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+            </select>
+          </label>
+
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-ink-4">Subjects this lecturer can teach</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {editForm.subjects?.map((s, idx) => (
@@ -302,40 +372,40 @@ function LecturersTab() {
             </div>
           </div>
 
-          <div className="mt-4 border-t border-line pt-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">Weekly availability — click a cell to toggle</div>
-            <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
-              <div></div>
-              {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
-              {TIME_SLOTS.map(slot => (
-                <div key={`row-${slot}`} className="contents">
-                  <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
-                  {DAYS.map(day => {
-                    const status = editForm.availability?.[`${day}-${slot}`] || 'open'
-                    let bgClass = 'bg-panel text-ink-3'
-                    let textLabel = 'avail'
-                    if (status === 'busy') {
-                      bgClass = 'bg-[#FBE8D2] text-[#A57D2E] font-medium'
-                      textLabel = 'busy'
-                    } else if (status === 'unavailable') {
-                      bgClass = 'bg-[#FBE2E6] text-danger font-medium'
-                      textLabel = 'off'
-                    }
-                    return (
-                      <button
-                        key={`${day}-${slot}`}
-                        type="button"
-                        className={`h-7 rounded border border-line ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
-                        onClick={() => toggleSlot(day, slot)}
-                      >
-                        {textLabel}
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
+          {/* 只有当类型为 part-time 时才渲染每周可用时间选择网格，full-time 直接隐藏 */}
+          {editForm.type === 'part-time' && (
+            <div className="mt-4 border-t border-line pt-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">Weekly availability — click a cell to toggle</div>
+              <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
+                <div></div>
+                {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
+                {TIME_SLOTS.map(slot => (
+                  <div key={`row-${slot}`} className="contents">
+                    <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
+                    {DAYS.map(day => {
+                      const status = editForm.availability?.[`${day}-${slot}`] || 'available'
+                      let bgClass = 'bg-emerald-50 text-emerald-700 font-medium border-emerald-300'
+                      let textLabel = 'avail'
+                      if (status === 'unavailable') {
+                        bgClass = 'bg-[#FBE2E6] text-danger font-medium border-red-300'
+                        textLabel = 'off'
+                      }
+                      return (
+                        <button
+                          key={`${day}-${slot}`}
+                          type="button"
+                          className={`h-7 rounded border ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
+                          onClick={() => toggleSlot(day, slot)}
+                        >
+                          {textLabel}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mt-5 flex items-center justify-between border-t border-line pt-3">
             <button type="button" onClick={handleDelete} className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors">Delete</button>
@@ -581,6 +651,192 @@ function SubjectsTab() {
   )
 }
 
+// 教室子组件 (RoomsTab) —— 支持设置维修状态
+function RoomsTab() {
+  const [query, setQuery] = useState('')
+  const [rooms, setRooms] = useState(ROOMS)
+  const [selectedId, setSelectedId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+
+  useEffect(() => {
+    if (selectedId !== null) {
+      const found = rooms.find(r => r.id === selectedId)
+      setEditForm(found ? JSON.parse(JSON.stringify(found)) : null)
+    } else {
+      setEditForm(null)
+    }
+  }, [selectedId, rooms])
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return rooms.filter((r) => !q || r.name.toLowerCase().includes(q) || r.type.toLowerCase().includes(q))
+  }, [query, rooms])
+
+  const handleSave = async () => {
+    if (!editForm) return
+    try {
+      setRooms(prev => prev.map(r => r.id === editForm.id ? editForm : r))
+      alert(`Successfully updated room: ${editForm.name}`)
+      setSelectedId(null)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to save changes')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!editForm) return
+    if (!confirm(`Are you sure you want to delete ${editForm.name}?`)) return
+    try {
+      setRooms(prev => prev.filter(r => r.id !== editForm.id))
+      setSelectedId(null)
+      alert('Room deleted successfully')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete room')
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 gap-4">
+      <div className="min-w-0 flex-1 flex flex-col">
+        <div className="mb-3 flex items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search rooms…"
+            aria-label="Search rooms"
+            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+          />
+        </div>
+
+        <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-panel text-[11px] text-ink-4">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Room Name</th>
+                <th className="px-3 py-2 font-semibold">Type</th>
+                <th className="px-3 py-2 font-semibold">Capacity</th>
+                <th className="px-3 py-2 font-semibold">Status</th>
+                <th className="px-3 py-2 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const active = r.id === selectedId
+                let badgeTone = 'ok'
+                let statusLabel = 'Available'
+                if (r.status === 'maintenance') {
+                  badgeTone = 'warn'
+                  statusLabel = 'Under Maintenance'
+                } else if (r.status === 'out_of_service') {
+                  badgeTone = 'danger'
+                  statusLabel = 'Out of Service'
+                }
+
+                return (
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelectedId(r.id)}
+                    className={`cursor-pointer border-t border-line-2 transition-colors ${active ? 'bg-navy-50' : 'hover:bg-panel'}`}
+                  >
+                    <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
+                    <td className="px-3 py-2 text-ink-2">{r.type}</td>
+                    <td className="px-3 py-2 text-ink-2">{r.capacity} seats</td>
+                    <td className="px-3 py-2">
+                      <Badge tone={badgeTone}>{statusLabel}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <button 
+                        type="button" 
+                        onClick={(e) => { 
+                          e.stopPropagation() 
+                          setSelectedId(r.id) 
+                        }}
+                        className="rounded border border-line bg-white px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="py-8 text-center text-ink-4">No rooms found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-ink-4">{rooms.length} rooms total · showing {rows.length}</p>
+      </div>
+
+      {selectedId !== null && editForm && (
+        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-white p-4 lg:block overflow-y-auto max-h-[85vh] shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-ink">Edit room</h2>
+            <button type="button" onClick={() => setSelectedId(null)} className="text-ink-4 hover:text-ink text-sm font-bold px-1">✕</button>
+          </div>
+          
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Room Code / Name
+            <input 
+              value={editForm.name} 
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value, id: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500" 
+            />
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Room Type
+            <select
+              value={editForm.type}
+              onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="Standard room">Standard room</option>
+              <option value="Computer lab">Computer lab</option>
+              <option value="Lecture hall">Lecture hall</option>
+            </select>
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Capacity (Seats)
+            <input 
+              type="number"
+              value={editForm.capacity} 
+              onChange={(e) => setEditForm({ ...editForm, capacity: Number(e.target.value) })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500" 
+            />
+          </label>
+
+          <label className="mt-3 block text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+            Operational Status
+            <select
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              className="mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink bg-white outline-none focus:border-navy-500"
+            >
+              <option value="available">Available (Normal)</option>
+              <option value="maintenance">Under Maintenance</option>
+              <option value="out_of_service">Out of Service</option>
+            </select>
+          </label>
+
+          <div className="mt-5 flex items-center justify-between border-t border-line pt-3">
+            <button type="button" onClick={handleDelete} className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors">Delete</button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setSelectedId(null)} className="h-[28px] rounded border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">Cancel</button>
+              <button type="button" onClick={handleSave} className="h-[28px] rounded bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors">Save changes</button>
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
+  )
+}
+
 // 主页面组件
 export default function ManagePeoplePage() {
   const [params, setParams] = useSearchParams()
@@ -596,6 +852,8 @@ export default function ManagePeoplePage() {
           <LecturersTab />
         ) : tab === 'subjects' ? (
           <SubjectsTab />
+        ) : tab === 'rooms' ? (
+          <RoomsTab />
         ) : (
           <div className="rounded-md border border-dashed border-line-strong bg-white p-8 text-center text-xs text-ink-4">
             {TABS.find((t) => t.id === tab)?.label} management module coming soon.

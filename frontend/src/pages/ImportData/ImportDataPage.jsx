@@ -1,3 +1,4 @@
+// src/pages/ImportData/ImportDataPage.jsx
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
@@ -13,8 +14,12 @@ const MANUAL_CATEGORIES = [
   { id: 'group', label: 'Group / intake', desc: 'Add groups/intakes', badge: 'GR' },
   { id: 'lecturer', label: 'Lecturer', desc: 'Add lecturers', badge: 'LC' },
   { id: 'classroom', label: 'Classroom', desc: 'Add classrooms', badge: 'RM' },
+  { id: 'rooms', label: 'Rooms & Maintenance', desc: 'Add rooms & status', badge: 'RO' },
   { id: 'student', label: 'Student', desc: 'Add students', badge: 'ST' },
 ];
+
+const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
+const TIME_SLOTS = ['08-10', '10-12', '13-15', '15-17'];
 
 function BulkImport() {
   const [file, setFile] = useState(null);
@@ -214,14 +219,21 @@ function ManualImport() {
   const [lecturerName, setLecturerName] = useState('');
   const [lecturerEmail, setLecturerEmail] = useState('');
   const [lecturerType, setLecturerType] = useState('Full-time');
+  const [lecturerAvailability, setLecturerAvailability] = useState({});
 
   const [roomCode, setRoomCode] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('40');
-  const [roomType, setRoomType] = useState('Standard Lecture Room');
+  const [roomType, setRoomType] = useState('Standard room');
+
+  // Rooms 标签页状态
+  const [customRoomName, setCustomRoomName] = useState('');
+  const [customRoomType, setCustomRoomType] = useState('Standard room');
+  const [customRoomCap, setCustomRoomCap] = useState('40');
+  const [customRoomStatus, setCustomRoomStatus] = useState('available');
 
   const [studentId, setStudentId] = useState('');
   const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState(''); // 新增：学生邮箱 State
+  const [studentEmail, setStudentEmail] = useState(''); 
   const [studentGroup, setStudentGroup] = useState('DB2601A');
 
   const [addedRecords, setAddedRecords] = useState([]);
@@ -232,6 +244,18 @@ function ManualImport() {
 
   const removeGroupTag = (g) => {
     setGroups(groups.filter(item => item !== g));
+  };
+
+  // 手动添加讲师时切换时间槽逻辑（仅 Part-time 可编辑）
+  const toggleLecturerSlot = (day, slot) => {
+    if (lecturerType === 'Full-time') return;
+    const key = `${day}-${slot}`;
+    const currentStatus = lecturerAvailability[key] || 'available';
+    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+    setLecturerAvailability({
+      ...lecturerAvailability,
+      [key]: nextStatus,
+    });
   };
 
   const handleAddRecord = () => {
@@ -260,10 +284,13 @@ function ManualImport() {
         id: Date.now(),
         type: 'Lecturer',
         name: lecturerName,
+        employmentType: lecturerType, // 保存全职/兼职身份
         detail: `${lecturerType} · ${lecturerEmail || 'No email'}`,
       };
       setLecturerName('');
       setLecturerEmail('');
+      setLecturerType('Full-time');
+      setLecturerAvailability({});
     } else if (category === 'classroom') {
       if (!roomCode.trim()) return;
       newRec = {
@@ -273,17 +300,26 @@ function ManualImport() {
         detail: `${roomType} (Cap: ${roomCapacity})`,
       };
       setRoomCode('');
+    } else if (category === 'rooms') {
+      if (!customRoomName.trim()) return;
+      newRec = {
+        id: Date.now(),
+        type: 'Venue Status',
+        name: customRoomName,
+        detail: `${customRoomType} · Cap: ${customRoomCap} · Status: ${customRoomStatus}`,
+      };
+      setCustomRoomName('');
     } else if (category === 'student') {
       if (!studentId.trim() || !studentName.trim()) return;
       newRec = {
         id: Date.now(),
         type: 'Student',
         name: `${studentId} — ${studentName}`,
-        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`, // 包含邮箱显示
+        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`,
       };
       setStudentId('');
       setStudentName('');
-      setStudentEmail(''); // 清空邮箱输入框
+      setStudentEmail('');
     }
 
     if (newRec) {
@@ -297,6 +333,7 @@ function ManualImport() {
       case 'group': return 'Add group';
       case 'lecturer': return 'Add lecturer';
       case 'classroom': return 'Add classroom';
+      case 'rooms': return 'Add room & status';
       case 'student': return 'Add student';
       default: return 'Add record';
     }
@@ -395,9 +432,9 @@ function ManualImport() {
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room type</label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
-                      <option>Standard</option>
-                      <option>Computer Lab</option>
-                      <option>Auditorium</option>
+                      <option value="Standard room">Standard room</option>
+                      <option value="Computer lab">Computer lab</option>
+                      <option value="Lecture hall">Lecture hall</option>
                     </select>
                   </div>
                   <div>
@@ -557,11 +594,48 @@ function ManualImport() {
                     onChange={(e) => setLecturerType(e.target.value)}
                     className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                   >
-                    <option>Full-time</option>
-                    <option>Part-time</option>
-                    <option>Contract / Visiting</option>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract / Visiting">Contract / Visiting</option>
                   </select>
                 </div>
+
+                {/* 只有当选择 Part-time 时才显示每周可用时间网格；Full-time 直接隐藏 */}
+                {lecturerType === 'Part-time' && (
+                  <div className="mt-4 border-t border-line pt-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">
+                      Weekly availability — click a cell to toggle
+                    </div>
+                    <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
+                      <div></div>
+                      {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
+                      {TIME_SLOTS.map(slot => (
+                        <div key={`row-${slot}`} className="contents">
+                          <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
+                          {DAYS.map(day => {
+                            const status = lecturerAvailability[`${day}-${slot}`] || 'available';
+                            let bgClass = 'bg-emerald-50 text-emerald-700 font-medium border-emerald-300';
+                            let textLabel = 'avail';
+                            if (status === 'unavailable') {
+                              bgClass = 'bg-[#FBE2E6] text-danger font-medium border-red-300';
+                              textLabel = 'off';
+                            }
+                            return (
+                              <button
+                                key={`${day}-${slot}`}
+                                type="button"
+                                className={`h-7 rounded border ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
+                                onClick={() => toggleLecturerSlot(day, slot)}
+                              >
+                                {textLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -599,11 +673,66 @@ function ManualImport() {
                     onChange={(e) => setRoomType(e.target.value)}
                     className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                   >
-                    <option>Standard Lecture Room</option>
-                    <option>Computer Lab</option>
-                    <option>Auditorium</option>
-                    <option>Workshop / Studio</option>
+                    <option value="Standard room">Standard room</option>
+                    <option value="Computer lab">Computer lab</option>
+                    <option value="Lecture hall">Lecture hall</option>
                   </select>
+                </div>
+              </>
+            )}
+
+            {category === 'rooms' && (
+              <>
+                <h2 className="text-sm font-bold text-ink">Add room & maintenance status</h2>
+                <p className="text-xs text-ink-3">Configure a room and set its operational or maintenance state</p>
+
+                <div className="mt-5 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room name / code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. BR-105"
+                      value={customRoomName}
+                      onChange={(e) => setCustomRoomName(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Capacity (Seats)</label>
+                    <input
+                      type="number"
+                      value={customRoomCap}
+                      onChange={(e) => setCustomRoomCap(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room Type</label>
+                    <select
+                      value={customRoomType}
+                      onChange={(e) => setCustomRoomType(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    >
+                      <option value="Standard room">Standard room</option>
+                      <option value="Computer lab">Computer lab</option>
+                      <option value="Lecture hall">Lecture hall</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Operational Status</label>
+                    <select
+                      value={customRoomStatus}
+                      onChange={(e) => setCustomRoomStatus(e.target.value)}
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
+                    >
+                      <option value="available">Available (Normal)</option>
+                      <option value="maintenance">Under Maintenance</option>
+                      <option value="out_of_service">Out of Service</option>
+                    </select>
+                  </div>
                 </div>
               </>
             )}
@@ -683,23 +812,38 @@ function ManualImport() {
                 <span>Not saved anywhere else until you press Done</span>
               </div>
               <div className="divide-y divide-line bg-white rounded-b-md border-x border-b border-line">
-                {addedRecords.map((rec) => (
-                  <div key={rec.id} className="flex items-center justify-between p-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">{rec.type}</span>
-                      <span className="font-semibold text-ink">{rec.name}</span>
+                {addedRecords.map((rec) => {
+                  const isLecturer = rec.type === 'Lecturer';
+                  const isFullTime = rec.employmentType === 'Full-time';
+
+                  return (
+                    <div key={rec.id} className="flex items-center justify-between p-3 text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">{rec.type}</span>
+                        <span className="font-semibold text-ink">{rec.name}</span>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        {isLecturer ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                              {rec.employmentType}
+                            </span>
+                            <span className="text-ink-3">·</span>
+                            <span className="text-ink-3">{rec.detail.split(' · ')[1]}</span>
+                          </div>
+                        ) : (
+                          <span className="text-ink-3">{rec.detail}</span>
+                        )}
+                        <button 
+                          onClick={() => handleRemove(rec.id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <span className="text-ink-3">{rec.detail}</span>
-                      <button 
-                        onClick={() => handleRemove(rec.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

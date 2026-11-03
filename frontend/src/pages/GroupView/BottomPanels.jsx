@@ -1,42 +1,69 @@
 // src/pages/GroupView/BottomPanels.jsx
-import Badge from '../../components/Badge.jsx'; // 假设你有这个 Badge 组件，没有就用简单 div 替代
+import React from 'react';
 
-export default function BottomPanels() {
+const TONES = {
+  amber: { border: 'border-[#C58A1E]', bg: 'bg-[#FEFBF6]', title: 'text-[#C58A1E]' },
+  purple: { border: 'border-[#5B4B8A]', bg: 'bg-[#F9F8FC]', title: 'text-[#5B4B8A]' },
+  navy: { border: 'border-[#14406E]', bg: 'bg-[#F8FAFC]', title: 'text-[#14406E]' },
+};
+
+export default function BottomPanels({
+  unplacedLessons = [],
+  onAutoPlaceAll,
+  onLessonDragStart,
+  onLessonDragEnd,
+}) {
   return (
     <div className="mt-4 flex flex-col gap-4 shrink-0">
-      
-      {/* Unplaced Lessons */}
+      {/* Unplaced Lessons：来自数据库、还没排进时间表的课程 */}
       <div className="rounded-md border border-line bg-white p-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h3 className="text-[13px] font-semibold text-ink">Unplaced lessons</h3>
-            <span className="flex size-5 items-center justify-center rounded-full bg-[#FBE2E6] text-[10px] font-bold text-danger">3</span>
+            <span className="flex size-5 items-center justify-center rounded-full bg-[#FBE2E6] text-[10px] font-bold text-danger">
+              {unplacedLessons.length}
+            </span>
             <span className="text-xs text-ink-3 ml-2">Drag a card onto the grid, or let the scheduler place it</span>
           </div>
-          <button className="rounded border border-line-strong bg-panel px-3 py-1 text-xs font-medium text-ink-2 hover:bg-line-2">
+          <button
+            type="button"
+            onClick={onAutoPlaceAll}
+            className="rounded border border-line-strong bg-panel px-3 py-1 text-xs font-medium text-ink-2 hover:bg-line-2 transition-colors"
+          >
             Auto-place all
           </button>
         </div>
-        
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {/* Card 1 */}
-          <div className="w-[180px] shrink-0 rounded border-t-2 border-[#14406E] border-x border-b border-line bg-[#F8FAFC] p-2">
-             <div className="text-xs font-bold text-[#14406E]">Business Statistics</div>
-             <div className="text-[11px] text-[#4A6B8F]">DB2542A · 2 periods</div>
-             <div className="text-[11px] text-[#7A90AB] mt-1">needs a 40-seat room</div>
-          </div>
-          {/* Card 2 */}
-          <div className="w-[180px] shrink-0 rounded border-t-2 border-[#5B4B8A] border-x border-b border-line bg-[#F9F8FC] p-2">
-             <div className="text-xs font-bold text-[#5B4B8A]">Business Law</div>
-             <div className="text-[11px] text-[#6F6295]">HM2601A · 2 periods</div>
-             <div className="text-[11px] text-[#8C82AE] mt-1">Ms Chong busy Mon–Tue</div>
-          </div>
-          {/* Card 3 */}
-          <div className="w-[180px] shrink-0 rounded border-t-2 border-[#C58A1E] border-x border-b border-line bg-[#FEFBF6] p-2">
-             <div className="text-xs font-bold text-[#C58A1E]">Microeconomics</div>
-             <div className="text-[11px] text-[#A57D2E]">Retake · 4 students</div>
-             <div className="text-[11px] text-warn mt-1">clashes with 1 lecture</div>
-          </div>
+
+        <div className="flex gap-3 overflow-x-auto pb-1 min-h-[76px]">
+          {unplacedLessons.map((lesson) => {
+            const tone = TONES[lesson.tone] || TONES.navy;
+            return (
+              <div
+                key={lesson.id || lesson.code}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', String(lesson.code || lesson.id));
+                  onLessonDragStart?.({ source: 'unplaced', lesson });
+                }}
+                onDragEnd={() => onLessonDragEnd?.()}
+                className={`w-[180px] shrink-0 rounded border-t-2 ${tone.border} border-x border-b border-line ${tone.bg} p-2 cursor-grab active:cursor-grabbing shadow-xs transition-transform hover:-translate-y-0.5 select-none`}
+              >
+                <div className={`truncate text-xs font-bold ${tone.title}`}>{lesson.name || lesson.code}</div>
+                <div className="truncate text-[11px] text-ink-3">
+                  {lesson.group || '—'} · {lesson.span || 2} periods
+                </div>
+                <div className="text-[11px] text-ink-4 mt-1 truncate">
+                  {lesson.note || (lesson.needsLab ? 'needs a lab room' : 'needs a room')}
+                </div>
+              </div>
+            );
+          })}
+          {unplacedLessons.length === 0 && (
+            <div className="flex items-center justify-center w-full text-xs text-ink-4 py-4">
+              All lessons have been placed on the timetable! 🎉
+            </div>
+          )}
         </div>
       </div>
 
@@ -47,11 +74,11 @@ export default function BottomPanels() {
             <h3 className="text-[13px] font-semibold text-ink">Retake students</h3>
             <span className="text-xs text-ink-3">checked against each student's own group timetable</span>
           </div>
-          <button className="rounded border border-line-strong bg-white px-3 py-1 text-xs font-medium text-ink-2 hover:bg-panel">
+          <button type="button" className="rounded border border-line-strong bg-white px-3 py-1 text-xs font-medium text-ink-2 hover:bg-panel">
             Open manager
           </button>
         </div>
-        
+
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="text-ink-4 border-b border-line-2">
@@ -84,7 +111,6 @@ export default function BottomPanels() {
           </tbody>
         </table>
       </div>
-
     </div>
-  )
+  );
 }
