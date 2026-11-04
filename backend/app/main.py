@@ -8,20 +8,21 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.auth import current_user, guard, require_admin
 from db.calendar import (
-    add_holiday, delete_holiday, list_holidays, list_semesters,
-    save_semester, sync_holidays,
+    add_holiday, dated_timetable, delete_holiday, get_active_semester,
+    list_holidays, list_semesters, save_semester, sync_holidays,
 )
 
 from db.repository import (
     apply_moves, create_room, entries_in_room, get_active_timetable, get_client,
-    get_entry, get_pins, get_room, list_groups, list_rooms, list_runs,
+    get_entry, get_pins, get_room, list_classes, list_groups, list_rooms, list_runs,
     load_input, log_action, move_entry, save_run, seed, set_lock,
-    soft_delete_room, update_room,
+    soft_delete_room, update_class, update_room,
 )
 
+from db.users import create_user, list_users, remove_user, update_user
 from importer.reader import parse_any as parse
-from importer.run_import import PLACEHOLDER_ROOMS
 from solver import engine as engine_v1
 from solver import engine_v2
 from solver.checker import check
@@ -39,8 +40,8 @@ class HolidayIn(BaseModel):
 
 
 class SemesterIn(BaseModel):
-    code: str = Field(min_length=1, max_length=20)
-    name: str = Field(min_length=1, max_length=60)
+    code: str | None = Field(default=None, max_length=20)   # optional: made from start_date
+    name: str | None = Field(default=None, max_length=60)
     start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
@@ -72,6 +73,7 @@ app = FastAPI(
     title="STAR API",
     description="Smart Timetable with Adaptive Reallocation",
     version="0.1.0",
+    dependencies=[Depends(guard)],     # login check on every route
 )
 
 # Allow the React dev server (Vite) to call this API from the browser
@@ -156,6 +158,20 @@ def read_timetable(group: str | None = None, lecturer: str | None = None,
     return {"run": tt["run"], "entries": entries}
 
 
+@app.get("/timetable/dated")
+def read_dated_timetable(start: str | None = None, end: str | None = None,
+                         group: str | None = None, lecturer: str | None = None,
+                         sb=Depends(get_sb)):
+    """The weekly timetable spread over real dates of the active semester."""
+    semester = get_active_semester(sb)
+    if semester is None:
+        raise HTTPException(404, "No semester dates yet. Admin must set them on Import data.")
+    tt = read_timetable(group, lecturer, sb)
+    holidays = list_holidays(sb, semester["start_date"], semester["end_date"])
+    return {"semester": semester, "run": tt["run"],
+            "entries": dated_timetable(tt["entries"], semester, holidays, start, end)}
+
+
 @app.get("/runs")
 def read_runs(sb=Depends(get_sb)):
     """Every timetable generated so far, newest first."""
@@ -226,7 +242,7 @@ async def import_commit(file: UploadFile = File(...), sb=Depends(get_sb)):
         raise HTTPException(400, "No classes found in this file")
 
     seed(sb, {
-        "rooms": PLACEHOLDER_ROOMS,
+        "rooms": {},                    # real rooms are managed on the Rooms page
         "groups": result["groups"],
         "classes": [{k: v for k, v in c.items() if k != "part_time"}
                     for c in result["classes"]],
@@ -270,7 +286,68 @@ def read_semesters(sb=Depends(get_sb)):
 def create_semester(s: SemesterIn, sb=Depends(get_sb)):
     if s.end_date <= s.start_date:
         raise HTTPException(400, "end_date must be after start_date")
-    return save_semester(sb, s.code, s.name, s.start_date, s.end_date)
+    saved = save_semester(sb, s.code, s.name, s.start_date, s.end_date)
+    for year in range(int(s.start_date[:4]), int(s.end_date[:4]) + 1):
+        try:                      # fill in public holidays for the semester's years
+            sync_holidays(sb, year)
+        except Exception:
+            pass
+    return saved
+
+
+# ---------- LOGIN / ACCOUNTS ----------
+@app.get("/me")
+def me(user=Depends(current_user)):
+    return user
+
+
+class UserIn(BaseModel):
+    email: str = Field(max_length=120)
+    role: Literal["admin", "lecturer"]
+    lecturer_name: str | None = Field(default=None, max_length=120)
+    is_part_time: bool = False
+    password: str | None = Field(default=None, min_length=8, max_length=72)
+    note: str | None = Field(default=None, max_length=200)
+
+
+class UserPatch(BaseModel):
+    role: Literal["admin", "lecturer"] | None = None
+    is_part_time: bool | None = None
+    note: str | None = Field(default=None, max_length=200)
+
+
+@app.get("/users", dependencies=[Depends(require_admin)])
+def read_users(sb=Depends(get_sb)):
+    return list_users(sb)
+
+
+@app.post("/users", status_code=201, dependencies=[Depends(require_admin)])
+def add_user(u: UserIn, sb=Depends(get_sb), admin=Depends(current_user)):
+    try:
+        row = create_user(sb, u.email, u.role, u.lecturer_name,
+                          u.is_part_time, u.password, u.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    log_action(sb, "user_added", {"email": row["email"], "role": row["role"]}, admin["email"])
+    return row
+
+
+@app.patch("/users/{user_id}", dependencies=[Depends(require_admin)])
+def edit_user(user_id: int, p: UserPatch, sb=Depends(get_sb)):
+    if update_user(sb, user_id, p.role, p.is_part_time, p.note) is None:
+        raise HTTPException(404, "User not found")
+    return {"ok": True}
+
+
+@app.delete("/users/{user_id}", dependencies=[Depends(require_admin)])
+def delete_user(user_id: int, sb=Depends(get_sb), admin=Depends(current_user)):
+    try:
+        if not remove_user(sb, user_id, admin["email"]):
+            raise HTTPException(404, "User not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    log_action(sb, "user_removed", {"id": user_id}, admin["email"])
+    return {"ok": True}
 
 @app.get("/groups")
 def read_groups(sb=Depends(get_sb)):

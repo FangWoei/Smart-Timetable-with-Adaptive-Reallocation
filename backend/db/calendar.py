@@ -5,6 +5,7 @@ generated per state. Rows the admin adds by hand (source='manual') are
 never overwritten by a regenerate.
 """
 import holidays
+from datetime import date, timedelta
 
 DEFAULT_STATE = "PNG"        # Penang — Georgetown campus
 
@@ -63,7 +64,15 @@ def list_semesters(sb):
     return sb.table("semesters").select("*").order("start_date", desc=True).execute().data
 
 
+def derive_semester(start_date):
+    """Admin only types the two dates; code/name come from the start date."""
+    d = date.fromisoformat(start_date)
+    return d.strftime("%Y%m"), d.strftime("%B %Y")
+
+
 def save_semester(sb, code, name, start_date, end_date, make_active=True):
+    if not code or not name:
+        code, name = derive_semester(start_date)
     if make_active:
         sb.table("semesters").update({"is_active": False}).eq("is_active", True).execute()
     return sb.table("semesters").upsert({
@@ -76,3 +85,32 @@ def save_semester(sb, code, name, start_date, end_date, make_active=True):
 def get_active_semester(sb):
     rows = sb.table("semesters").select("*").eq("is_active", True).execute().data
     return rows[0] if rows else None
+
+
+# ---------- REAL DATES ----------
+def dated_timetable(entries, semester, holidays_rows, start=None, end=None):
+    """Spread the weekly timetable over the semester's real dates.
+
+    Each entry becomes one row per week: same class, a real 'date', its
+    'week' number, and 'holiday' (name) when that day is a public holiday
+    with no classes. Holidays are kept in the list (not dropped) so the
+    screen can grey them out.
+    """
+    first = date.fromisoformat(max(start or semester["start_date"], semester["start_date"]))
+    last = date.fromisoformat(min(end or semester["end_date"], semester["end_date"]))
+    sem_start = date.fromisoformat(semester["start_date"])
+    closed = {h["holiday_date"]: h["name"] for h in holidays_rows
+              if not h.get("is_teaching_day")}
+
+    monday = sem_start - timedelta(days=sem_start.weekday())
+    out = []
+    while monday <= last:
+        week = (monday - (sem_start - timedelta(days=sem_start.weekday()))).days // 7 + 1
+        for e in entries:
+            day = monday + timedelta(days=e["day"] - 1)
+            if first <= day <= last:
+                out.append({**e, "date": day.isoformat(), "week": week,
+                            "holiday": closed.get(day.isoformat())})
+        monday += timedelta(days=7)
+    out.sort(key=lambda r: (r["date"], r["start_slot"]))
+    return out
