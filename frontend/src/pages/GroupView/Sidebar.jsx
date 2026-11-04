@@ -1,10 +1,10 @@
 // src/pages/GroupView/Sidebar.jsx
 import { useMemo, useState } from 'react'
-import { CONSTRAINTS, RESOURCES } from '../../data/timetable.js'
+import { CONSTRAINTS } from '../../data/timetable.js'
 
 const sectionLabel = 'px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-4'
 
-export default function Sidebar({ groups, selectedId, onSelect, view = 'group' }) {
+export default function Sidebar({ groups, selectedId, onSelect, view = 'group', resources = [] }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(true)
 
@@ -15,7 +15,7 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group' }
 
   // 根据当前视图动态确定分类标题与搜索提示
   const sectionCategory = view === 'lecturer' ? 'Lecturers' : view === 'room' ? 'Rooms' : 'Intakes'
-  const sectionTitle = view === 'lecturer' ? 'All Lecturers' : view === 'room' ? 'All Facilities' : 'January 2026'
+  const sectionTitle = view === 'lecturer' ? 'All Lecturers' : view === 'room' ? 'All Facilities' : 'All Groups'
   const searchPlaceholder = view === 'lecturer' ? 'Search lecturers…' : view === 'room' ? 'Search rooms…' : 'Search groups, subjects…'
 
   return (
@@ -91,7 +91,7 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group' }
       <hr className="mx-3 mt-3 border-line-2" />
       <div className={sectionLabel}>Resources</div>
       <ul>
-        {RESOURCES.map((r) => (
+        {resources.map((r) => (
           <li key={r.label}>
             <button type="button" className="flex h-7 w-full items-center px-3 text-[13px] text-ink-2 hover:bg-panel">
               {r.label}

@@ -6,7 +6,6 @@ import LessonDetailsPanel from './LessonDetailsPanel.jsx';
 import Sidebar from "./Sidebar.jsx";
 import TimetableGrid from "../../components/TimetableGrid.jsx";
 import Toolbar from "./Toolbar.jsx";
-import { LECTURERS } from "../../data/people.js";
 import { exportGroupBatchZip } from "./exportGroupPdf.jsx";
 
 const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -27,8 +26,8 @@ const periodTime = (p) => {
 // 两节课在同一天、时间有重叠
 const overlaps = (l, day, period, span) => {
   if (l.day !== day || l.period == null) return false;
-  const aStart = l.period * 2 - 1;
-  const aEnd = aStart + (l.span || 2) * 2;
+  const aStart = l.startSlot ?? l.period * 2 - 1;
+  const aEnd = aStart + (l.slotSpan ?? (l.span || 2) * 2);
   const bStart = period * 2 - 1;
   const bEnd = bStart + span * 2;
   return aStart < bEnd && bStart < aEnd;
@@ -138,6 +137,10 @@ export default function GroupViewPage() {
     setError("");
     setMessage("");
 
+    if (lesson.locked) {
+      setError(`"${lesson.name || lesson.module || lesson.code}" is locked. Click it, then press Unlock.`);
+      return;
+    }
     const period = Math.ceil(slot / 2); // slot 是贴齐整点的奇数格，period 1 = 08:30
     const span = lesson.span || 2;
     const name = lesson.name || lesson.module || baseCode(lesson.code);
@@ -214,6 +217,25 @@ export default function GroupViewPage() {
     },
   };
 
+  // Lock / Unlock 当前选中的课程（自动生成的课程默认是锁定的，解锁后才能拖动）
+  async function handleToggleLock() {
+    const l = selectedLessonData?.lesson;
+    if (!l || l.entryId == null || busy) return;
+    const next = !l.locked;
+    setBusy(true);
+    setError("");
+    try {
+      await api.setLock(l.entryId, next);
+      setSelectedLessonData((s) => (s ? { ...s, lesson: { ...s.lesson, locked: next } } : s));
+      await load();
+      setMessage(next ? "Locked." : "Unlocked. You can drag it now.");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleGenerate() {
     setBusy(true);
     setError("");
@@ -271,48 +293,28 @@ export default function GroupViewPage() {
       }));
     }
 
-    if (view === 'lecturer') {
-      const lecturerMap = {};
-      LECTURERS.forEach((lec) => {
-        lecturerMap[lec.name] = { id: lec.name, title: lec.email, lessons: [] };
-      });
+    // 一门课属于多个 group 时只算一次，code 后面标出所有 group
+    const tagged = (lesson) => ({
+      ...lesson,
+      code: `${lesson.code || lesson.name} (${(lesson.groups?.length ? lesson.groups : []).join(', ')})`,
+    });
+    const byEntity = (keyOf, title) => {
+      const map = new Map();
+      const seen = new Set();
+      groups.forEach((g) =>
+        g.lessons?.forEach((lesson) => {
+          const key = keyOf(lesson);
+          if (!key || seen.has(`${key}|${lesson.entryId}`)) return;
+          seen.add(`${key}|${lesson.entryId}`);
+          if (!map.has(key)) map.set(key, { id: key, title, lessons: [] });
+          map.get(key).lessons.push(tagged(lesson));
+        }),
+      );
+      return [...map.values()].sort((a, b) => a.id.localeCompare(b.id));
+    };
 
-      groups.forEach((group) => {
-        group.lessons?.forEach((lesson) => {
-          const lecName = lesson.lecturer;
-          if (lecName) {
-            if (!lecturerMap[lecName]) {
-              lecturerMap[lecName] = { id: lecName, title: 'Lecturer', lessons: [] };
-            }
-            lecturerMap[lecName].lessons.push({
-              ...lesson,
-              code: `${lesson.code || lesson.name} (${group.id})`,
-            });
-          }
-        });
-      });
-
-      return Object.values(lecturerMap);
-    }
-
-    if (view === 'room') {
-      const roomMap = {};
-
-      groups.forEach((group) => {
-        group.lessons?.forEach((lesson) => {
-          const roomName = lesson.room || 'Unassigned Room';
-          if (!roomMap[roomName]) {
-            roomMap[roomName] = { id: roomName, title: 'Campus Facility', lessons: [] };
-          }
-          roomMap[roomName].lessons.push({
-            ...lesson,
-            code: `${lesson.code || lesson.name} · ${group.id}`,
-          });
-        });
-      });
-
-      return Object.values(roomMap);
-    }
+    if (view === 'lecturer') return byEntity((l) => l.lecturer, 'Lecturer');
+    if (view === 'room') return byEntity((l) => realRoom(l.room), 'Campus Facility');
 
     return groups;
   }, [view, groups]);
@@ -347,13 +349,18 @@ export default function GroupViewPage() {
     }
   };
 
-  const sessions = new Set(
-    groups.flatMap((g) => g.lessons.map((l) => `${l.code}-${l.day}-${l.period}`)),
-  ).size;
+  // 真实数字：每条 entry 只算一次（一门课属于多个 group 也只算一次）
+  const placedIds = new Set(groups.flatMap((g) => g.lessons.map((l) => l.entryId)));
+  const sessions = placedIds.size;
+  const resources = [
+    { label: 'Groups', count: groups.length },
+    { label: 'Lecturers', count: new Set(groups.flatMap((g) => g.lessons.map((l) => l.lecturer).filter(Boolean))).size },
+    { label: 'Rooms', count: new Set(groups.flatMap((g) => g.lessons.map((l) => realRoom(l.room)).filter(Boolean))).size },
+  ];
 
   const conflicts = groups.reduce((n, g) => n + g.lessons.filter((l) => l.conflict).length, 0);
-  const placedLessonsCount = 42;
-  const totalLessonsCount = 45;
+  const placedLessonsCount = placedIds.size;
+  const totalLessonsCount = placedIds.size + unplacedLessons.length;
 
   const selectedGroup = selectedLessonData
     ? displayRows.find((g) => g.id === selectedLessonData.groupId)
@@ -369,6 +376,8 @@ export default function GroupViewPage() {
         }}
         onGenerate={handleGenerate}
         onVerify={handleVerify}
+        onToggleLock={handleToggleLock}
+        selectedLocked={selectedLessonData ? !!selectedLessonData.lesson.locked : null}
         onApprove={() => {}}
         canApprove={conflicts === 0}
         onExportBatch={handleBatchExport}
@@ -383,6 +392,7 @@ export default function GroupViewPage() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           view={view}
+          resources={resources}
         />
 
         <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
@@ -462,13 +472,9 @@ export default function GroupViewPage() {
             <span className="size-1.5 rounded-full bg-danger"></span>
             {conflicts} conflicts
           </span>
-          <span className="flex items-center gap-1.5 font-medium text-warn">
-            <span className="size-1.5 rounded-full bg-warn"></span>
-            1 soft warning
-          </span>
         </div>
         <div className="flex items-center gap-4">
-           <span>Last generated 09:42 · 4.2s · 31 constraints checked</span>
+           <span>{run ? `Run #${run.id} · ${run.status} · penalty ${run.penalty}` : 'No run yet'}</span>
         </div>
         <div className="font-medium"></div>
       </footer>

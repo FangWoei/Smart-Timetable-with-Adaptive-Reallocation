@@ -161,7 +161,7 @@ function ExportLessonCard({ lesson, colors, span, view }) {
 }
 
 function LessonCard({ lesson, isSelected, colors, onClick, draggable, onDragStart, onDragEnd }) {
-  const { conflict, startDate, endDate } = lesson
+  const { conflict, startDate, endDate, locked } = lesson
 
   return (
     <button
@@ -180,6 +180,11 @@ function LessonCard({ lesson, isSelected, colors, onClick, draggable, onDragStar
     >
       <div className="flex items-start justify-between gap-1">
         <p style={conflict ? undefined : { color: colors.text }} className={`min-w-0 truncate text-[10px] font-bold leading-tight ${conflict ? 'text-red-900' : ''}`}>
+          {locked && (
+            <svg width="9" height="10" viewBox="0 0 12 14" aria-label="Locked" className="mr-0.5 inline-block align-[-1px] text-ink-3" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="1" y="6" width="10" height="7" rx="1.5" /><path d="M3 6 V4 a3 3 0 0 1 6 0 v2" />
+            </svg>
+          )}
           {lesson.code || lesson.name}
         </p>
         {(startDate || endDate) && (
@@ -375,8 +380,11 @@ export default function TimetableGrid({
                             lesson={lesson}
                             isSelected={isSelected}
                             colors={colors}
-                            draggable={canDrag}
-                            onDragStart={(e) => startDrag(e, lesson)}
+                            draggable={canDrag && !lesson.locked}
+                            onDragStart={(e) => {
+                              if (lesson.locked) return e.preventDefault()
+                              startDrag(e, lesson)
+                            }}
                             onDragEnd={() => dnd?.onDragEnd()}
                             onClick={() => {
                               onSelect?.(entity.id)

@@ -52,12 +52,20 @@ export const api = {
   getTimetable: () => request("/timetable"),
   getRuns: () => request("/runs"),
   generate: (engine = "engine_v2") =>
-    request(`/timetable/generate?engine=${engine}`, { method: "POST" }),
+    request(`/timetable/generate?engine=${engine}&respect_locks=false`, { method: "POST" }),
   check: (entries) =>
     request("/timetable/check", {
       method: "POST",
       body: JSON.stringify({ entries }),
     }),
+  setLock: (entryId, locked) =>
+    request(`/timetable/entries/${entryId}/lock`, {
+      method: "POST",
+      body: JSON.stringify({ locked }),
+    }),
+  getRooms: () => request("/rooms"),
+  getUnplaced: () => request("/timetable/unplaced"),
+  autoPlaceAll: () => request("/timetable/unplaced/auto-place", { method: "POST" }),
   updateEntry: (entryId, data) =>
     request(`/timetable/entries/${entryId}`, {
       method: "PATCH",
@@ -72,57 +80,68 @@ function toneFor(code) {
   return TONE_KEYS[n % TONE_KEYS.length];
 }
 
-// 这条 entry 已经排进时间表（有星期和开始时间）
-export const isPlacedEntry = (e) => e.day != null && e.start_slot != null;
-
+/** One hue per course; sorted codes keep the colours the same on every load. */
 function courseHues(entries) {
-  const codes = [...new Set(entries.map((e) => e.class_code))].sort();
+  const codes = [...new Set(entries.map((e) => e.class_code ?? e.module))].sort();
   return new Map(
     codes.map((code, i) => [code, Math.round((210 + i * 137.508) % 360)]),
   );
 }
 
-/** Convert the API timetable into the shape TimetableGrid expects. */
+// "08:30" -> half-hour slot (slot 1 = 08:30, slot 2 = 09:00 ...)
+export function timeToSlot(t) {
+  const [h, m] = String(t).split(":").map(Number);
+  return Math.round((h * 60 + m - (8 * 60 + 30)) / 30) + 1;
+}
+
+/** An entry that already has a day and a start time is on the timetable. */
+export function isPlacedEntry(e) {
+  return e.day != null && (e.start_time != null || e.start_slot != null);
+}
+
+/**
+ * GET /timetable -> the shape TimetableGrid expects.
+ * An entry has a list of `groups`, so it is added to EVERY group it belongs to.
+ * start_time / end_time are used directly for position and length.
+ */
 export function toGridGroups(timetable, counts = {}) {
   const byGroup = new Map();
-  const placed = (timetable.entries ?? []).filter(isPlacedEntry);
-  const hues = courseHues(placed);
+  const entries = (timetable.entries ?? []).filter(isPlacedEntry);
+  const hues = courseHues(entries);
 
-  for (const e of placed) {
+  for (const e of entries) {
+    const code = e.class_code ?? e.module;
+    const startSlot =
+      e.start_time != null ? timeToSlot(e.start_time) : ((e.start_slot ?? 1) - 1) * 2 + 1;
+    const endSlot =
+      e.end_time != null ? timeToSlot(e.end_time) : startSlot + Math.round((e.hours ?? 1) * 2);
+
     for (const g of e.groups ?? []) {
       if (!byGroup.has(g)) byGroup.set(g, []);
-
-      const rawStart = e.start_slot || 1;
-      const startSlot = Math.round((rawStart - 1) * 2 + 1);
-      const slotSpan = Math.round((e.hours || 2) * 2);
-      const entryId = e.id ?? e.entry_id ?? null;
-
       byGroup.get(g).push({
-        id: entryId ?? `${e.class_code}-${e.day}-${rawStart}`,
-        entryId, // 真正的 entry id，拖拽保存时用它
-        code: e.class_code,
-        name: e.module,
+        entryId: e.entry_id ?? e.id,
+        sessionId: e.session_id,
+        locked: !!e.locked,
+        code,
         module: e.module,
-        day: e.day - 1, // API is 1-5, grid is 0-4
-        startSlot: startSlot,
-        slotSpan: slotSpan,
-        period: rawStart,
+        groups: e.groups ?? [],
+        day: e.day - 1, // API 1-5 -> grid 0-4
+        startTime: e.start_time,
+        endTime: e.end_time,
+        startSlot, // half-hour slot, used by the grid
+        slotSpan: Math.max(1, endSlot - startSlot),
+        period: e.start_slot ?? Math.ceil(startSlot / 2), // hourly period, used by drag/drop
         span: e.hours,
         room: e.room,
         lecturer: e.lecturer,
-        tone: toneFor(e.class_code),
-        hue: hues.get(e.class_code),
-        shared: (e.groups ?? []).length > 1,
+        tone: toneFor(code),
+        hue: hues.get(code),
+        shared: (e.groups?.length ?? 0) > 1,
       });
     }
   }
 
   return [...byGroup.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, lessons]) => ({
-      id,
-      count: counts[id],
-      lessons,
-      freeSlots: [],
-    }));
+    .map(([id, lessons]) => ({ id, count: counts[id], lessons, freeSlots: [] }));
 }

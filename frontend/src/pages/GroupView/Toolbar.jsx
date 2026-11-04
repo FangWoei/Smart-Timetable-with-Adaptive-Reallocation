@@ -21,6 +21,8 @@ export default function Toolbar({
   onVerify,
   onApprove,
   canApprove,
+  onToggleLock,
+  selectedLocked = null, // null = 没选中课程；true/false = 选中课程的锁定状态
   onExportBatch,
   isExporting = false,
   exportState = null,
@@ -57,11 +59,18 @@ export default function Toolbar({
           <path d="M10 3 L12.5 5.5 L10 8" /><path d="M12 5.5 h-6.5 a3.5 3.5 0 0 0 0 7 H9" />
         </svg>
       </button>
-      <button type="button" className={ghost}>
+      <button
+        type="button"
+        onClick={onToggleLock}
+        disabled={selectedLocked === null}
+        title={selectedLocked === null ? 'Click a lesson first' : selectedLocked ? 'Unlock to allow dragging' : 'Lock this lesson'}
+        className={ghost}
+      >
         <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="1" y="6" width="10" height="7" rx="1.5" /><path d="M3 6 V4 a3 3 0 0 1 6 0 v2" />
+          <rect x="1" y="6" width="10" height="7" rx="1.5" />
+          <path d={selectedLocked ? 'M3 6 V4 a3 3 0 0 1 6 0 v2' : 'M3 6 V4 a3 3 0 0 1 6 0'} />
         </svg>
-        Lock
+        {selectedLocked ? 'Unlock' : 'Lock'}
       </button>
 
       <Divider />
