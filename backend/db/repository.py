@@ -5,6 +5,7 @@ from supabase import create_client
 from datetime import date
 
 from solver.engine import slot_time
+from db.lecturers import load_unavailable
 
 
 def get_client():
@@ -97,7 +98,7 @@ def load_input(sb):
             "lab": c["needs_lab"],
         })
 
-    return {"rooms": rooms, "groups": groups, "lessons": lessons}
+        return {"rooms": rooms, "groups": groups, "lessons": lessons,"unavailable": load_unavailable(sb)}
 
 
 # ---------- SAVE SOLVER OUTPUT ----------

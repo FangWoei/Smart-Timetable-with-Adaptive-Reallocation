@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.auth import current_user, guard, require_admin
+from app.deps import get_sb
+from app.lecturer_routes import router as lecturer_router
 from db.calendar import (
     add_holiday, dated_timetable, delete_holiday, get_active_semester,
     list_holidays, list_semesters, save_semester, sync_holidays,
@@ -85,11 +87,7 @@ app.add_middleware(
 )
 
 
-@lru_cache
-def get_sb():
-    """One shared Supabase client for all requests."""
-    return get_client()
-
+app.include_router(lecturer_router)
 
 # ---------- REQUEST SHAPES ----------
 class EntryIn(BaseModel):
