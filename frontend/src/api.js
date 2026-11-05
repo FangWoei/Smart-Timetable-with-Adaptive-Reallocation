@@ -56,9 +56,24 @@ export const api = {
   importPreview: (file) => uploadCsv("/import/preview", file),
   importCommit: (file) => uploadCsv("/import/commit", file),
 
+  getLecturers: () => request("/lecturers"),
+  addLecturer: (l) =>
+    request("/lecturers", { method: "POST", body: JSON.stringify(l) }),
+  setLecturerPartTime: (id, isPartTime) =>
+    request(`/lecturers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_part_time: isPartTime }),
+    }),
+  getLecturerAvailability: (id) => request(`/lecturers/${id}/availability`),
+  saveLecturerAvailability: (id, unavailable) =>
+    request(`/lecturers/${id}/availability`, {
+      method: "PUT",
+      body: JSON.stringify({ unavailable }),
+    }),
+  deleteLecturer: (id) => request(`/lecturers/${id}`, { method: "DELETE" }),
+
   getGroups: () => request("/groups"),
-  getHolidays: (start, end) =>
-    request(`/holidays?start=${start}&end=${end}`),
+  getHolidays: (start, end) => request(`/holidays?start=${start}&end=${end}`),
   syncHolidays: (year, state) =>
     request(`/holidays/sync?year=${year}&state=${encodeURIComponent(state)}`, {
       method: "POST",
@@ -70,7 +85,9 @@ export const api = {
   getTimetable: () => request("/timetable"),
   getRuns: () => request("/runs"),
   generate: (engine = "engine_v2") =>
-    request(`/timetable/generate?engine=${engine}&respect_locks=false`, { method: "POST" }),
+    request(`/timetable/generate?engine=${engine}&respect_locks=false`, {
+      method: "POST",
+    }),
   check: (entries) =>
     request("/timetable/check", {
       method: "POST",
@@ -82,8 +99,22 @@ export const api = {
       body: JSON.stringify({ locked }),
     }),
   getRooms: () => request("/rooms"),
+  addRoom: (r) =>
+    request("/rooms", { method: "POST", body: JSON.stringify(r) }),
+  updateRoom: (id, r) =>
+    request(`/rooms/${id}`, { method: "PATCH", body: JSON.stringify(r) }),
+  setRoomStatus: (id, s) =>
+    request(`/rooms/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify(s),
+    }),
+  deleteRoom: (id) => request(`/rooms/${id}`, { method: "DELETE" }),
+  getClasses: () => request("/classes"),
+  updateClass: (id, c) =>
+    request(`/classes/${id}`, { method: "PATCH", body: JSON.stringify(c) }),
   getUnplaced: () => request("/timetable/unplaced"),
-  autoPlaceAll: () => request("/timetable/unplaced/auto-place", { method: "POST" }),
+  autoPlaceAll: () =>
+    request("/timetable/unplaced/auto-place", { method: "POST" }),
   updateEntry: (entryId, data) =>
     request(`/timetable/entries/${entryId}`, {
       method: "PATCH",
@@ -100,7 +131,9 @@ function toneFor(code) {
 
 /** One hue per course; sorted codes keep the colours the same on every load. */
 function courseHues(entries) {
-  const codes = [...new Set(entries.map((e) => e.class_code ?? e.module))].sort();
+  const codes = [
+    ...new Set(entries.map((e) => e.class_code ?? e.module)),
+  ].sort();
   return new Map(
     codes.map((code, i) => [code, Math.round((210 + i * 137.508) % 360)]),
   );
@@ -130,9 +163,13 @@ export function toGridGroups(timetable, counts = {}) {
   for (const e of entries) {
     const code = e.class_code ?? e.module;
     const startSlot =
-      e.start_time != null ? timeToSlot(e.start_time) : ((e.start_slot ?? 1) - 1) * 2 + 1;
+      e.start_time != null
+        ? timeToSlot(e.start_time)
+        : ((e.start_slot ?? 1) - 1) * 2 + 1;
     const endSlot =
-      e.end_time != null ? timeToSlot(e.end_time) : startSlot + Math.round((e.hours ?? 1) * 2);
+      e.end_time != null
+        ? timeToSlot(e.end_time)
+        : startSlot + Math.round((e.hours ?? 1) * 2);
 
     for (const g of e.groups ?? []) {
       if (!byGroup.has(g)) byGroup.set(g, []);
@@ -161,5 +198,10 @@ export function toGridGroups(timetable, counts = {}) {
 
   return [...byGroup.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, lessons]) => ({ id, count: counts[id], lessons, freeSlots: [] }));
+    .map(([id, lessons]) => ({
+      id,
+      count: counts[id],
+      lessons,
+      freeSlots: [],
+    }));
 }
