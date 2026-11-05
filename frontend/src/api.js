@@ -1,9 +1,22 @@
+import { getToken, supabase } from "./auth/supabase.js";
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
+// Adds the login token to a request, and sends the user back to the login page
+// if the server says the session is no longer valid.
+async function authedFetch(url, options = {}) {
+  const token = await getToken();
+  const headers = { ...options.headers };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401 && token) await supabase?.auth.signOut();
+  return res;
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+  const res = await authedFetch(`${BASE_URL}${path}`, {
     ...options,
+    headers: { "Content-Type": "application/json", ...options.headers },
   });
   const body = await res.json().catch(() => null);
 
@@ -22,7 +35,10 @@ async function uploadCsv(path, file) {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch(`${BASE_URL}${path}`, { method: "POST", body: form });
+  const res = await authedFetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    body: form,
+  });
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
@@ -35,6 +51,8 @@ async function uploadCsv(path, file) {
 }
 
 export const api = {
+  me: () => request("/me"),
+
   importPreview: (file) => uploadCsv("/import/preview", file),
   importCommit: (file) => uploadCsv("/import/commit", file),
 
