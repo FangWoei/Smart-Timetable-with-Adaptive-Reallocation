@@ -3,7 +3,7 @@ export const NAV_ITEMS = [
   { to: '/', label: 'Home' },
   { to: '/group-view', label: 'Scheduler' },
   { to: '/students', label: 'Student timetables' },
-  { to: '/people', label: 'Manage data' },
+  { to: '/people', label: 'Manage Lecturers' },
   { to: '/import', label: 'Import data' },
   { to: '/holidays', label: 'Holidays' }
 ]

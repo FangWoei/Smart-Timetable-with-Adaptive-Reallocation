@@ -88,6 +88,31 @@ def guard(request: Request, creds: HTTPAuthorizationCredentials | None = Depends
     if request.method != "GET" and user["role"] != "admin":
         raise HTTPException(403, "Only an admin can do this.")
 
+# What a lecturer account may do. Everything else is admin-only.
+LECTURER_READ = ("/me", "/holidays", "/semesters")      # GET these (and their sub-paths)
+LECTURER_WRITE = {("PUT", "/me/availability")}
+
+
+def _lecturer_may(method, path):
+    if method == "GET":
+        return any(path == p or path.startswith(p + "/") for p in LECTURER_READ)
+    return (method, path) in LECTURER_WRITE
+
+
+def guard(request: Request, creds: HTTPAuthorizationCredentials | None = Depends(bearer)):
+    """Runs before every route: must be signed in, then the role decides."""
+    if (not auth_required() or request.method == "OPTIONS"
+            or request.url.path in OPEN_PATHS):
+        return
+    if creds is None:
+        raise HTTPException(401, "Please sign in.")
+    user = identify(creds.credentials)
+    request.state.user = user
+    if user["role"] == "admin":
+        return
+    if user["role"] == "lecturer" and _lecturer_may(request.method, request.url.path):
+        return
+    raise HTTPException(403, "You do not have access to this.")
 
 def current_user(request: Request):
     return getattr(request.state, "user", DEV_USER)
