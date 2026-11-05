@@ -23,6 +23,23 @@ def list_lecturers(sb):
     return out
 
 
+def add_lecturer(sb, name, is_part_time=False):
+    """Create a lecturer row. Names are unique, so a duplicate is refused."""
+    name = " ".join(name.split())
+    if not name:
+        raise ValueError("Name is required")
+    if sb.table("lecturers").select("id").eq("name", name).execute().data:
+        raise ValueError("A lecturer with this name already exists")
+    return sb.table("lecturers").insert(
+        {"name": name, "is_part_time": is_part_time}).execute().data[0]
+
+
+def remove_lecturer(sb, lecturer_id):
+    """Delete a lecturer. Their classes/lessons keep existing with no lecturer."""
+    rows = sb.table("lecturers").delete().eq("id", lecturer_id).execute().data
+    return rows[0] if rows else None
+
+
 def get_lecturer(sb, lecturer_id):
     rows = sb.table("lecturers").select("id, name, is_part_time").eq("id", lecturer_id).execute().data
     return rows[0] if rows else None

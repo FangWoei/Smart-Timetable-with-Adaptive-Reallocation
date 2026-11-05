@@ -115,6 +115,43 @@ def test_admin_can_read_everything(client):
     assert c.get("/lecturers", headers=H("t-admin")).status_code == 200
 
 
+# ---------- add / remove lecturers ----------
+def test_admin_adds_lecturer_without_email(client):
+    c, fake = client
+    r = c.post("/lecturers", headers=H("t-admin"), json={"name": "  Dr  New  Person ", "is_part_time": True})
+    assert r.status_code == 201
+    assert r.json()["name"] == "Dr New Person" and r.json()["is_part_time"] is True
+    assert any(l["name"] == "Dr New Person" for l in fake.store["lecturers"])
+
+
+def test_add_lecturer_with_email_also_invites_login(client):
+    c, fake = client
+    r = c.post("/lecturers", headers=H("t-admin"),
+               json={"name": "Ms Wong", "email": "wong" + D})
+    assert r.status_code == 201
+    assert any(u["email"] == "wong" + D and u["role"] == "lecturer" for u in fake.store["allowed_users"])
+
+
+def test_add_lecturer_rejects_duplicate_and_wrong_domain(client):
+    c, _ = client
+    assert c.post("/lecturers", headers=H("t-admin"), json={"name": "Ms Lim"}).status_code == 400
+    assert c.post("/lecturers", headers=H("t-admin"),
+                  json={"name": "Ms Wong", "email": "wong@gmail.com"}).status_code == 400
+
+
+def test_only_admin_can_add_or_delete_lecturers(client):
+    c, _ = client
+    assert c.post("/lecturers", headers=H("t-pt"), json={"name": "Ms Wong"}).status_code == 403
+    assert c.delete("/lecturers/1", headers=H("t-pt")).status_code == 403
+
+
+def test_admin_deletes_lecturer(client):
+    c, fake = client
+    assert c.delete("/lecturers/2", headers=H("t-admin")).status_code == 200
+    assert all(l["id"] != 2 for l in fake.store["lecturers"])
+    assert c.delete("/lecturers/99", headers=H("t-admin")).status_code == 404
+
+
 # ---------- availability ----------
 def test_part_time_saves_own_availability(client):
     c, fake = client
@@ -220,4 +257,3 @@ def test_me_timetable_and_hours_for_part_time(client, monkeypatch):
     r = c.get("/me/timetable", headers=H("t-pt")).json()
     assert [e["module"] for e in r["entries"]] == ["Maths"]          # only own classes
     assert c.get("/me/hours", headers=H("t-pt")).json()["per_week"] == 2
-    
