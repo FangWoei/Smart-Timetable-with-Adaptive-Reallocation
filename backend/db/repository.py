@@ -121,6 +121,7 @@ def save_run(sb, result, engine, seconds, note=None):
         "day_of_week": e["day"],
         "start_slot": e["start_slot"],
         "hours": e["hours"],
+        "is_locked": True,
     } for e in result["entries"]]).execute()
 
     return run["id"]
