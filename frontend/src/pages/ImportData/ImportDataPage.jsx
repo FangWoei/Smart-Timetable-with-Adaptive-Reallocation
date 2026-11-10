@@ -23,6 +23,10 @@ const TIME_SLOTS = ['08-10', '10-12', '13-15', '15-17'];
 
 function BulkImport() {
   const [file, setFile] = useState(null);
+  
+  // ── 新增：第二个拖拽框的文件状态（Semester start and end dates） ──
+  const [semesterFile, setSemesterFile] = useState(null);
+
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +35,13 @@ function BulkImport() {
   function pick(f) {
     setFile(f ?? null);
     setPreview(null);
+    setError("");
+    setDone("");
+  }
+
+  // ── 新增：第二个框的文件选择处理函数 ──
+  function pickSemester(f) {
+    setSemesterFile(f ?? null);
     setError("");
     setDone("");
   }
@@ -44,10 +55,12 @@ function BulkImport() {
       if (action === "preview") {
         setPreview(await api.importPreview(file));
       } else {
+        // 如果同时有学期日期文件，也可以在这里调用相应的上传逻辑
         const r = await api.importCommit(file);
         setDone(`Imported ${r.classes} classes and ${r.groups} intake groups.`);
         setPreview(null);
         setFile(null);
+        setSemesterFile(null);
       }
     } catch (e) {
       setError(e.message);
@@ -57,56 +70,111 @@ function BulkImport() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <h1 className="text-lg font-semibold text-ink">Import course listing</h1>
-      <p className="mt-1 text-sm text-ink-3">
-        Upload the Course Listing CSV. Student names in the file are ignored —
-        only the head count per class is read.
-      </p>
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* 第一个框：Import course listing */}
+      <div>
+        <h1 className="text-lg font-semibold text-ink">Import course listing</h1>
+        <p className="mt-1 text-sm text-ink-3">
+          Upload the Course Listing CSV. Student names in the file are ignored —
+          only the head count per class is read.
+        </p>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
-        <label
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            pick(e.dataTransfer.files?.[0]);
-          }}
-          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
-          <input
-            type="file"
-            accept=".csv"
-            className="sr-only"
-            onChange={(e) => pick(e.target.files?.[0])}
-          />
-          {file ? (
-            <>
-              <span className="text-sm font-medium text-ink">{file.name}</span>
-              <span className="text-xs text-ink-4">
-                {(file.size / 1024).toFixed(0)} KB · choose another to replace
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-sm text-ink-2">
-                Drag a file here, or click to browse
-              </span>
-              <span className="text-xs text-ink-4">.csv up to 2 MB</span>
-              <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
-                Choose file
-              </span>
-            </>
-          )}
-        </label>
+        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              pick(e.dataTransfer.files?.[0]);
+            }}
+            className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
+            <input
+              type="file"
+              accept=".csv"
+              className="sr-only"
+              onChange={(e) => pick(e.target.files?.[0])}
+            />
+            {file ? (
+              <>
+                <span className="text-sm font-medium text-ink">{file.name}</span>
+                <span className="text-xs text-ink-4">
+                  {(file.size / 1024).toFixed(0)} KB · choose another to replace
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-ink-2">
+                  Drag a file here, or click to browse
+                </span>
+                <span className="text-xs text-ink-4">.csv up to 2 MB</span>
+                <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
+                  Choose file
+                </span>
+              </>
+            )}
+          </label>
 
-        <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
-          <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
-          <ul className="mt-2 list-disc space-y-1.5 pl-4">
-            <li>Intake group, level and head count</li>
-            <li>Course code, name and hours per week</li>
-            <li>Lecturer name and full-time / part-time</li>
-            <li className="text-ink-4">Student names are skipped</li>
-          </ul>
-        </aside>
+          <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
+            <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
+            <ul className="mt-2 list-disc space-y-1.5 pl-4">
+              <li>Intake group, level and head count</li>
+              <li>Course code, name and hours per week</li>
+              <li>Lecturer name and full-time / part-time</li>
+              <li className="text-ink-4">Student names are skipped</li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+
+      {/* ── 新增：第二个一模一样的拖拽文件框（专门用于导入学期起止日期文件） ── */}
+      <div className="border-t border-line pt-6">
+        <h2 className="text-lg font-semibold text-ink">Import semester start and end dates</h2>
+        <p className="mt-1 text-sm text-ink-3">
+          Upload the CSV containing semester start and end dates.
+        </p>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              pickSemester(e.dataTransfer.files?.[0]);
+            }}
+            className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
+            <input
+              type="file"
+              accept=".csv"
+              className="sr-only"
+              onChange={(e) => pickSemester(e.target.files?.[0])}
+            />
+            {semesterFile ? (
+              <>
+                <span className="text-sm font-medium text-ink">{semesterFile.name}</span>
+                <span className="text-xs text-ink-4">
+                  {(semesterFile.size / 1024).toFixed(0)} KB · choose another to replace
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-ink-2">
+                  Drag a file here, or click to browse
+                </span>
+                <span className="text-xs text-ink-4">.csv up to 2 MB</span>
+                <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
+                  Choose file
+                </span>
+              </>
+            )}
+          </label>
+
+          <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
+            <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
+            <ul className="mt-2 list-disc space-y-1.5 pl-4">
+              <li>Semester start and end dates</li>
+              <li>Term durations and schedules</li>
+              <li className="text-ink-4">Academic calendar mapping</li>
+            </ul>
+          </aside>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -186,7 +254,10 @@ function BulkImport() {
       <div className="mt-6 flex justify-end gap-2">
         <button
           type="button"
-          onClick={() => pick(null)}
+          onClick={() => {
+            pick(null);
+            pickSemester(null);
+          }}
           className="h-[30px] rounded border border-line-strong bg-white px-4 text-[13px] text-ink-2 hover:bg-panel">
           Discard
         </button>
@@ -246,7 +317,6 @@ function ManualImport() {
     setGroups(groups.filter(item => item !== g));
   };
 
-  // 手动添加讲师时切换时间槽逻辑（仅 Part-time 可编辑）
   const toggleLecturerSlot = (day, slot) => {
     if (lecturerType === 'Full-time') return;
     const key = `${day}-${slot}`;
@@ -284,7 +354,7 @@ function ManualImport() {
         id: Date.now(),
         type: 'Lecturer',
         name: lecturerName,
-        employmentType: lecturerType, // 保存全职/兼职身份
+        employmentType: lecturerType,
         detail: `${lecturerType} · ${lecturerEmail || 'No email'}`,
       };
       setLecturerName('');
@@ -600,7 +670,6 @@ function ManualImport() {
                   </select>
                 </div>
 
-                {/* 只有当选择 Part-time 时才显示每周可用时间网格；Full-time 直接隐藏 */}
                 {lecturerType === 'Part-time' && (
                   <div className="mt-4 border-t border-line pt-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">
