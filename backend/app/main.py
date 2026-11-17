@@ -248,8 +248,7 @@ async def import_commit(file: UploadFile = File(...), sb=Depends(get_sb)):
     seed(sb, {
         "rooms": {},                    # real rooms are managed on the Rooms page
         "groups": result["groups"],
-        "classes": [{k: v for k, v in c.items() if k != "part_time"}
-                    for c in result["classes"]],
+        "classes": result["classes"],
     })
     return {
         "groups": len(result["groups"]),

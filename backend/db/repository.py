@@ -25,11 +25,17 @@ def seed(sb, data):
     groups = [{"code": c, "student_count": n} for c, n in data["groups"].items()]
     sb.table("intake_groups").upsert(groups, on_conflict="code").execute()
 
-    names = sorted({c["lecturer"] for c in data["classes"] if c.get("lecturer")})
-    sb.table("lecturers").upsert(
-        [{"name": n, "is_part_time": n.startswith("PT")} for n in names],
-        on_conflict="name",
-    ).execute()
+    # Only NEW lecturers are created. Existing ones keep what the admin set
+    # (full-time / part-time), so a re-import never changes it.
+    part_time = {}
+    for c in data["classes"]:
+        n = c.get("lecturer")
+        if n:
+            part_time[n] = part_time.get(n, False) or bool(c.get("part_time")) or n.startswith("PT")
+    known = {r["name"] for r in sb.table("lecturers").select("name").execute().data}
+    new = [{"name": n, "is_part_time": part_time[n]} for n in sorted(part_time) if n not in known]
+    if new:
+        sb.table("lecturers").insert(new).execute()
 
     lect_ids = _id_map(sb, "lecturers", "name")
     sb.table("classes").upsert([{

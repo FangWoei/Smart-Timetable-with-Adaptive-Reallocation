@@ -220,3 +220,40 @@ def test_me_timetable_and_hours_for_part_time(client, monkeypatch):
     r = c.get("/me/timetable", headers=H("t-pt")).json()
     assert [e["module"] for e in r["entries"]] == ["Maths"]          # only own classes
     assert c.get("/me/hours", headers=H("t-pt")).json()["per_week"] == 2
+
+# ---------- add / delete lecturer (Manage Lecturers page) ----------
+def test_admin_adds_lecturer_with_login(client):
+    c, fake = client
+    r = c.post("/lecturers", headers=H("t-admin"),
+               json={"name": "Dr New", "email": "new" + D, "is_part_time": True})
+    assert r.status_code == 201
+    body = r.json()
+    assert body["name"] == "Dr New" and body["email"] == "new" + D and body["is_part_time"] is True
+    assert any(u["email"] == "new" + D and u["role"] == "lecturer" for u in fake.store["allowed_users"])
+
+
+def test_add_lecturer_without_email_and_duplicates(client):
+    c, _ = client
+    assert c.post("/lecturers", headers=H("t-admin"), json={"name": "No Mail"}).status_code == 201
+    assert c.post("/lecturers", headers=H("t-admin"), json={"name": "No Mail"}).status_code == 400
+
+
+def test_bad_email_leaves_nothing_behind(client):
+    c, fake = client
+    r = c.post("/lecturers", headers=H("t-admin"), json={"name": "Bad Mail", "email": "x@gmail.com"})
+    assert r.status_code == 400
+    assert not any(l["name"] == "Bad Mail" for l in fake.store["lecturers"])
+
+
+def test_delete_lecturer_removes_login(client):
+    c, fake = client
+    assert c.delete("/lecturers/2", headers=H("t-admin")).status_code == 200
+    assert not any(l["id"] == 2 for l in fake.store["lecturers"])
+    assert not any(u["lecturer_id"] == 2 for u in fake.store["allowed_users"])
+    assert c.delete("/lecturers/2", headers=H("t-admin")).status_code == 404
+
+
+def test_lecturer_cannot_add_or_delete(client):
+    c, _ = client
+    assert c.post("/lecturers", headers=H("t-pt"), json={"name": "Sneaky"}).status_code == 403
+    assert c.delete("/lecturers/1", headers=H("t-pt")).status_code == 403

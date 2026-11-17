@@ -1,21 +1,29 @@
 """Lecturer side: own timetable, availability, teaching hours. Admin: manage lecturers."""
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth import current_user, require_admin
 from app.deps import get_sb
 from db.calendar import dated_timetable, get_active_semester, list_holidays
 from db.lecturers import (
-    get_lecturer, get_unavailable, list_lecturers, set_part_time,
+    add_lecturer, get_lecturer, remove_lecturer, get_unavailable, list_lecturers, set_part_time,
     set_unavailable, teaching_hours,
 )
 from db.repository import get_published_timetable, log_action
+from db.users import create_user
 
 router = APIRouter()
 
 
 class AvailabilityIn(BaseModel):
     unavailable: list[list[int]]          # [[day, slot], ...]  day 1-5, slot 1-10
+
+
+class LecturerIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=200)      # given = may sign in
+    is_part_time: bool = False
+    password: str | None = Field(default=None, min_length=8, max_length=72)   # first password
 
 
 class LecturerPatch(BaseModel):
@@ -102,6 +110,36 @@ def save_my_availability(body: AvailabilityIn, sb=Depends(get_sb), user=Depends(
 @router.get("/lecturers", dependencies=[Depends(require_admin)])
 def read_lecturers(sb=Depends(get_sb)):
     return list_lecturers(sb)
+
+
+@router.post("/lecturers", status_code=201, dependencies=[Depends(require_admin)])
+def create_lecturer(body: LecturerIn, sb=Depends(get_sb), admin=Depends(current_user)):
+    """Add a lecturer. With an email, the lecturer is also allowed to sign in."""
+    try:
+        lec = add_lecturer(sb, body.name, body.is_part_time)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if body.email:
+        try:
+            create_user(sb, body.email, "lecturer", lecturer_name=lec["name"],
+                        is_part_time=body.is_part_time, password=body.password)
+        except ValueError as e:
+            remove_lecturer(sb, lec["id"])          # do not leave a half-made lecturer
+            raise HTTPException(400, str(e))
+    log_action(sb, "add_lecturer", {"lecturer_id": lec["id"], "email": body.email},
+               admin["email"])
+    return next(l for l in list_lecturers(sb) if l["id"] == lec["id"])
+
+
+@router.delete("/lecturers/{lecturer_id}", dependencies=[Depends(require_admin)])
+def delete_lecturer(lecturer_id: int, sb=Depends(get_sb), admin=Depends(current_user)):
+    """Delete a lecturer and their login. Their classes stay, with no lecturer."""
+    lec = _existing(sb, lecturer_id)
+    sb.table("allowed_users").delete().eq("lecturer_id", lecturer_id).eq("role", "lecturer").execute()
+    remove_lecturer(sb, lecturer_id)
+    log_action(sb, "delete_lecturer", {"lecturer_id": lecturer_id, "name": lec["name"]},
+               admin["email"])
+    return {"deleted": lecturer_id}
 
 
 @router.patch("/lecturers/{lecturer_id}", dependencies=[Depends(require_admin)])
