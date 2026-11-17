@@ -159,7 +159,7 @@ def read_timetable(group: str | None = None, lecturer: str | None = None,
     if lecturer:
         entries = [e for e in entries if e["lecturer"] == lecturer]
     return {"run": tt["run"], "entries": entries,
-            "unplaced": unplaced_cards(sb, group, lecturer)}
+            "unplaced": unplaced_cards(sb, group, lecturer, tt=tt)}
 
 
 @app.get("/timetable/dated")
