@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.auth import current_user, guard, require_admin
 from app.deps import get_sb
 from app.lecturer_routes import router as lecturer_router
+from app.publish_routes import router as publish_router
 from app.unplaced_routes import router as unplaced_router, unplaced_cards, check_partial
 from db.calendar import (
     add_holiday, dated_timetable, delete_holiday, get_active_semester,
@@ -90,6 +91,7 @@ app.add_middleware(
 
 app.include_router(lecturer_router)
 app.include_router(unplaced_router)
+app.include_router(publish_router)
 
 
 # ---------- REQUEST SHAPES ----------

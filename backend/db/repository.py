@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from supabase import create_client
 from datetime import date
 
-from solver.engine import slot_time
 from db.lecturers import load_unavailable
+from solver.engine import slot_time
 
 
 def get_client():
@@ -98,7 +98,8 @@ def load_input(sb):
             "lab": c["needs_lab"],
         })
 
-        return {"rooms": rooms, "groups": groups, "lessons": lessons,"unavailable": load_unavailable(sb)}
+    return {"rooms": rooms, "groups": groups, "lessons": lessons,
+            "unavailable": load_unavailable(sb)}
 
 
 # ---------- SAVE SOLVER OUTPUT ----------
@@ -122,7 +123,6 @@ def save_run(sb, result, engine, seconds, note=None):
         "day_of_week": e["day"],
         "start_slot": e["start_slot"],
         "hours": e["hours"],
-        "is_locked": True,
     } for e in result["entries"]]).execute()
 
     return run["id"]
@@ -131,20 +131,12 @@ def save_run(sb, result, engine, seconds, note=None):
 # ---------- READ OUTPUT ----------
 def list_runs(sb):
     return (sb.table("timetable_runs")
-              .select("id, status, penalty, engine, solve_seconds, is_active, note, created_at")
+              .select("id, status, penalty, engine, solve_seconds, is_active, is_published, note, created_at")
               .order("id", desc=True)
               .execute().data)
 
 
-def get_active_timetable(sb):
-    runs = (sb.table("timetable_runs")
-              .select("id, status, penalty, engine, created_at")
-              .eq("is_active", True)
-              .execute().data)
-    if not runs:
-        return None
-    run = runs[0]
-
+def _timetable_for(sb, run):
     rows = sb.table("timetable_entries").select(
         "id, is_locked, day_of_week, start_slot, hours, rooms(code), "
         "sessions(id, session_no, classes(code, module_name, lecturers(name), "
@@ -174,6 +166,37 @@ def get_active_timetable(sb):
         })
     entries.sort(key=lambda e: (e["groups"][0], e["day"], e["start_slot"]))
     return {"run": run, "entries": entries}
+
+
+RUN_FIELDS = "id, status, penalty, engine, created_at, is_published, published_at"
+
+
+def get_active_timetable(sb):
+    """The newest timetable (draft or published): what the admin works on."""
+    runs = sb.table("timetable_runs").select(RUN_FIELDS).eq("is_active", True).execute().data
+    return _timetable_for(sb, runs[0]) if runs else None
+
+
+def get_published_timetable(sb):
+    """The timetable lecturers may see, or None if nothing is published."""
+    runs = sb.table("timetable_runs").select(RUN_FIELDS).eq("is_published", True).execute().data
+    return _timetable_for(sb, runs[0]) if runs else None
+
+
+def publish_run(sb, run_id):
+    from datetime import datetime, timezone
+    sb.table("timetable_runs").update({"is_published": False, "published_at": None}) \
+      .eq("is_published", True).execute()
+    return sb.table("timetable_runs").update({
+        "is_published": True,
+        "published_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", run_id).execute().data[0]
+
+
+def unpublish_all(sb):
+    sb.table("timetable_runs").update({"is_published": False, "published_at": None}) \
+      .eq("is_published", True).execute()
+
 
 def list_groups(sb):
     return (sb.table("intake_groups")
@@ -315,4 +338,3 @@ def apply_moves(sb, moves):
             {"room_id": room_ids[m["to_room"]]}
         ).eq("run_id", run_id).eq("session_id", int(m["lesson_id"])).execute()
     return len(moves)
-
