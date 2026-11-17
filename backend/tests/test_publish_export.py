@@ -97,3 +97,64 @@ def test_published_export_needs_a_published_timetable(api):
     assert c.get("/export/timetable.xlsx", params={"published": True}).status_code == 404
     c.post("/timetable/publish")
     assert c.get("/export/timetable.xlsx", params={"published": True}).status_code == 200
+
+# ---------- delete a plan ----------
+from types import SimpleNamespace
+from db import repository
+
+
+class RunsDB:
+    """Just enough of a database for timetable_runs."""
+    def __init__(self, runs): self.runs = runs
+    def table(self, name):
+        assert name == "timetable_runs"
+        return RunsQ(self)
+
+
+class RunsQ:
+    def __init__(self, db): self.db, self.op, self.f, self.desc, self.n, self.patch = db, "select", {}, False, None, None
+    def select(self, *a): return self
+    def eq(self, k, v): self.f[k] = v; return self
+    def order(self, k, desc=False): self.desc = desc; return self
+    def limit(self, n): self.n = n; return self
+    def delete(self): self.op = "delete"; return self
+    def update(self, d): self.op, self.patch = "update", d; return self
+    def execute(self):
+        hit = [r for r in self.db.runs if all(r[k] == v for k, v in self.f.items())]
+        if self.op == "delete":
+            self.db.runs = [r for r in self.db.runs if r not in hit]
+        elif self.op == "update":
+            for r in hit: r.update(self.patch)
+        else:
+            hit = sorted(hit, key=lambda r: r["id"], reverse=self.desc)[: self.n]
+        return SimpleNamespace(data=[dict(r) for r in hit])
+
+
+def runs():
+    return [{"id": 1, "is_active": False, "is_published": False},
+            {"id": 2, "is_active": False, "is_published": True},
+            {"id": 3, "is_active": True, "is_published": False}]
+
+
+def test_delete_active_run_promotes_the_newest_left():
+    db = RunsDB(runs())
+    out = repository.delete_run(db, 3)
+    assert out == {"deleted": 3, "was_active": True, "was_published": False, "active_run_id": 2}
+    assert [r["id"] for r in db.runs] == [1, 2]
+    assert next(r for r in db.runs if r["id"] == 2)["is_active"] is True
+
+
+def test_delete_old_run_keeps_active_and_last_run_leaves_none():
+    db = RunsDB(runs())
+    assert repository.delete_run(db, 1)["active_run_id"] is None
+    assert next(r for r in db.runs if r["id"] == 3)["is_active"] is True
+    db = RunsDB([{"id": 9, "is_active": True, "is_published": False}])
+    assert repository.delete_run(db, 9)["active_run_id"] is None and db.runs == []
+    assert repository.delete_run(db, 9) is None
+
+
+def test_delete_run_route(api, monkeypatch):
+    c, _ = api
+    monkeypatch.setattr(pr, "delete_run", lambda sb, i: None if i == 99 else {"deleted": i})
+    assert c.delete("/runs/5").json() == {"deleted": 5}
+    assert c.delete("/runs/99").status_code == 404

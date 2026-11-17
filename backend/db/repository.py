@@ -199,6 +199,27 @@ def publish_run(sb, run_id):
     }).eq("id", run_id).execute().data[0]
 
 
+def delete_run(sb, run_id):
+    """Delete one plan (its entries go with it). If it was the one being worked on,
+    the newest remaining plan becomes active again. Returns what happened, or None
+    if there is no such plan."""
+    rows = sb.table("timetable_runs").select("id, is_active, is_published") \
+             .eq("id", run_id).execute().data
+    if not rows:
+        return None
+    run = rows[0]
+    sb.table("timetable_runs").delete().eq("id", run_id).execute()   # entries cascade
+    new_active = None
+    if run["is_active"]:
+        left = sb.table("timetable_runs").select("id").order("id", desc=True) \
+                 .limit(1).execute().data
+        if left:
+            new_active = left[0]["id"]
+            sb.table("timetable_runs").update({"is_active": True}).eq("id", new_active).execute()
+    return {"deleted": run_id, "was_active": run["is_active"],
+            "was_published": run["is_published"], "active_run_id": new_active}
+
+
 def unpublish_all(sb):
     sb.table("timetable_runs").update({"is_published": False, "published_at": None}) \
       .eq("is_published", True).execute()

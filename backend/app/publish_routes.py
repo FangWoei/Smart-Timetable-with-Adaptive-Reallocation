@@ -11,7 +11,8 @@ from app.deps import get_sb
 from app.lecturer_routes import _linked
 from app.unplaced_routes import find_unplaced
 from db.repository import (
-    get_active_timetable, get_published_timetable, log_action, publish_run, unpublish_all,
+    delete_run, get_active_timetable, get_published_timetable, log_action, publish_run,
+    unpublish_all,
 )
 
 router = APIRouter()
@@ -58,6 +59,16 @@ def unpublish(sb=Depends(get_sb), admin=Depends(current_user)):
     unpublish_all(sb)
     log_action(sb, "unpublish_timetable", None, admin["email"])
     return {"published_run_id": None}
+
+
+@router.delete("/runs/{run_id}")
+def remove_run(run_id: int, sb=Depends(get_sb), admin=Depends(current_user)):
+    """Throw a plan away. Needed when you do not want a generated timetable."""
+    result = delete_run(sb, run_id)
+    if result is None:
+        raise HTTPException(404, "That plan does not exist.")
+    log_action(sb, "delete_run", result, admin["email"])
+    return result
 
 
 # ---------- EXPORT ----------
