@@ -100,6 +100,7 @@ export const api = {
   getSemesters: () => request("/semesters"),
   getTimetable: () => request("/timetable"),
   getRuns: () => request("/runs"),
+  deleteRun: (id) => request(`/runs/${id}`, { method: "DELETE" }),
   generate: (engine = "engine_v2") =>
     request(`/timetable/generate?engine=${engine}&respect_locks=false`, {
       method: "POST",

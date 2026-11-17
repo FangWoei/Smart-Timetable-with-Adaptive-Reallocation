@@ -1,8 +1,9 @@
 // src/pages/ImportData/ImportDataPage.jsx
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import Tabs from "../../components/Tabs.jsx";
+import { refreshSemester } from "../../semester.js";
 
 const TABS = [
   { id: "bulk", label: "Bulk import" },
@@ -10,86 +11,125 @@ const TABS = [
 ];
 
 const MANUAL_CATEGORIES = [
-  { id: 'subject', label: 'Subject / course', desc: 'Add subjects/courses', badge: 'SU' },
-  { id: 'group', label: 'Group / intake', desc: 'Add groups/intakes', badge: 'GR' },
-  { id: 'lecturer', label: 'Lecturer', desc: 'Add lecturers', badge: 'LC' },
-  { id: 'classroom', label: 'Classroom', desc: 'Add classrooms', badge: 'RM' },
-  { id: 'rooms', label: 'Rooms & Maintenance', desc: 'Add rooms & status', badge: 'RO' },
-  { id: 'student', label: 'Student', desc: 'Add students', badge: 'ST' },
+  {
+    id: "subject",
+    label: "Subject / course",
+    desc: "Add subjects/courses",
+    badge: "SU",
+  },
+  {
+    id: "group",
+    label: "Group / intake",
+    desc: "Add groups/intakes",
+    badge: "GR",
+  },
+  { id: "lecturer", label: "Lecturer", desc: "Add lecturers", badge: "LC" },
+  { id: "classroom", label: "Classroom", desc: "Add classrooms", badge: "RM" },
+  {
+    id: "rooms",
+    label: "Rooms & Maintenance",
+    desc: "Add rooms & status",
+    badge: "RO",
+  },
+  { id: "student", label: "Student", desc: "Add students", badge: "ST" },
 ];
 
-const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
-const TIME_SLOTS = ['08-10', '10-12', '13-15', '15-17'];
+const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
+const TIME_SLOTS = ["08-10", "10-12", "13-15", "15-17"];
 
-function SemesterDates() {
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [saved, setSaved] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api.getSemesters().then((list) => {
-      const active = list.find((x) => x.is_active);
-      if (active) {
-        setStart(active.start_date);
-        setEnd(active.end_date);
-        setSaved(`Current semester: ${active.start_date} to ${active.end_date}`);
-      }
-    }).catch(() => {});
-  }, []);
-
-  async function save() {
-    setError("");
-    if (!start || !end) return setError("Choose both dates.");
-    if (end <= start) return setError("The end date must be after the start date.");
-    setBusy(true);
-    try {
-      await api.createSemester({ start_date: start, end_date: end });
-      setSaved(`Saved: ${start} to ${end}. Public holidays were added.`);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const input = "mt-1 h-[30px] rounded border border-line px-2 text-xs outline-none focus:border-navy-500";
+function SemesterDates({ dates, setDates, onSave, busy, error, saved }) {
+  const input =
+    "mt-1 h-[30px] rounded border border-line px-2 text-xs outline-none focus:border-navy-500";
   return (
     <div className="mt-4 rounded-md border border-line bg-white p-4">
       <h2 className="text-[13px] font-semibold text-ink">Semester dates</h2>
       <p className="mt-1 text-xs text-ink-3">
-        Used to turn the weekly timetable into real calendar dates and to mark holidays.
+        Used to turn the weekly timetable into real calendar dates and to mark
+        holidays. They are saved when you press Save dates or Confirm import.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
           Start date
-          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={`block ${input}`} />
+          <input
+            type="date"
+            value={dates.start}
+            onChange={(e) => setDates({ ...dates, start: e.target.value })}
+            className={`block ${input}`}
+          />
         </label>
         <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
           End date
-          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={`block ${input}`} />
+          <input
+            type="date"
+            value={dates.end}
+            onChange={(e) => setDates({ ...dates, end: e.target.value })}
+            className={`block ${input}`}
+          />
         </label>
         <button
           type="button"
-          onClick={save}
+          onClick={() => onSave().catch(() => {})}
           disabled={busy}
           className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:opacity-50">
-          {busy ? "Saving…" : "Save dates"}
+          Save dates
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-      {!error && saved && <p className="mt-2 text-xs text-green-700">{saved}</p>}
+      {!error && saved && (
+        <p className="mt-2 text-xs text-green-700">{saved}</p>
+      )}
     </div>
   );
 }
 
 function BulkImport() {
+  const navigate = useNavigate();
+  const [dates, setDates] = useState({ start: "", end: "" });
+  const [savedDates, setSavedDates] = useState(null); // what the database has
+  const [dateError, setDateError] = useState("");
+  const [dateNote, setDateNote] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
+
+  useEffect(() => {
+    api
+      .getSemesters()
+      .then((list) => {
+        const active = list.find((x) => x.is_active);
+        if (active) {
+          setDates({ start: active.start_date, end: active.end_date });
+          setSavedDates({ start: active.start_date, end: active.end_date });
+          setDateNote(
+            `Current semester: ${active.start_date} to ${active.end_date}`,
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Save the dates if they were typed in and are not saved yet.
+  async function saveDates() {
+    setDateError("");
+    const { start, end } = dates;
+    if (!start && !end) return; // nothing typed: keep what is saved
+    try {
+      if (!start || !end)
+        throw new Error("Choose both the start and the end date.");
+      if (end <= start)
+        throw new Error("The end date must be after the start date.");
+      if (savedDates?.start === start && savedDates?.end === end) return;
+      await api.createSemester({ start_date: start, end_date: end });
+      setSavedDates({ start, end });
+      setDateNote(`Saved: ${start} to ${end}. Public holidays were added.`);
+      await refreshSemester();
+    } catch (e) {
+      setDateError(e.message);
+      throw e;
+    }
+  }
 
   function pick(f) {
     setFile(f ?? null);
@@ -107,10 +147,20 @@ function BulkImport() {
       if (action === "preview") {
         setPreview(await api.importPreview(file));
       } else {
+        await saveDates(); // stops here (and shows why) if the dates are wrong
         const r = await api.importCommit(file);
-        setDone(`Imported ${r.classes} classes and ${r.groups} intake groups.`);
         setPreview(null);
         setFile(null);
+        // make the first timetable right away (the loading screen stays up while it is made)
+        let message = `Imported ${r.classes} classes and ${r.groups} intake groups.`;
+        try {
+          const g = await api.generate();
+          message += ` Timetable generated: run #${g.run_id}, ${g.status}, penalty ${g.penalty}.`;
+        } catch (e) {
+          message += ` The timetable could not be generated yet: ${e.message}`;
+        }
+        // then straight to the Scheduler: the loading screen ends when its data has arrived
+        navigate("/group-view", { state: { message } });
       }
     } catch (e) {
       setError(e.message);
@@ -127,7 +177,14 @@ function BulkImport() {
         only the head count per class is read.
       </p>
 
-      <SemesterDates />
+      <SemesterDates
+        dates={dates}
+        setDates={setDates}
+        onSave={saveDates}
+        busy={busy}
+        error={dateError}
+        saved={dateNote}
+      />
 
       <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
         <label
@@ -268,55 +325,56 @@ function BulkImport() {
 }
 
 function ManualImport() {
-  const [category, setCategory] = useState('subject');
+  const [category, setCategory] = useState("subject");
 
-  const [subjectCode, setSubjectCode] = useState('BUS204');
-  const [subjectName, setSubjectName] = useState('Financial Management');
-  const [sessionType, setSessionType] = useState('Lecture + tutorial');
-  const [hours, setHours] = useState('4');
-  const [groups, setGroups] = useState(['DB2601A', 'DB2601B']);
-  const [lecturer, setLecturer] = useState('Ms Koh Bee Hoon');
+  const [subjectCode, setSubjectCode] = useState("BUS204");
+  const [subjectName, setSubjectName] = useState("Financial Management");
+  const [sessionType, setSessionType] = useState("Lecture + tutorial");
+  const [hours, setHours] = useState("4");
+  const [groups, setGroups] = useState(["DB2601A", "DB2601B"]);
+  const [lecturer, setLecturer] = useState("Ms Koh Bee Hoon");
   const [needsLab, setNeedsLab] = useState(false);
 
-  const [groupCode, setGroupCode] = useState('');
-  const [classSize, setClassSize] = useState('35');
+  const [groupCode, setGroupCode] = useState("");
+  const [classSize, setClassSize] = useState("35");
 
-  const [lecturerName, setLecturerName] = useState('');
-  const [lecturerEmail, setLecturerEmail] = useState('');
-  const [lecturerType, setLecturerType] = useState('Full-time');
+  const [lecturerName, setLecturerName] = useState("");
+  const [lecturerEmail, setLecturerEmail] = useState("");
+  const [lecturerType, setLecturerType] = useState("Full-time");
   const [lecturerAvailability, setLecturerAvailability] = useState({});
 
-  const [roomCode, setRoomCode] = useState('');
-  const [roomCapacity, setRoomCapacity] = useState('40');
-  const [roomType, setRoomType] = useState('Standard room');
+  const [roomCode, setRoomCode] = useState("");
+  const [roomCapacity, setRoomCapacity] = useState("40");
+  const [roomType, setRoomType] = useState("Standard room");
 
   // Rooms 标签页状态
-  const [customRoomName, setCustomRoomName] = useState('');
-  const [customRoomType, setCustomRoomType] = useState('Standard room');
-  const [customRoomCap, setCustomRoomCap] = useState('40');
-  const [customRoomStatus, setCustomRoomStatus] = useState('available');
+  const [customRoomName, setCustomRoomName] = useState("");
+  const [customRoomType, setCustomRoomType] = useState("Standard room");
+  const [customRoomCap, setCustomRoomCap] = useState("40");
+  const [customRoomStatus, setCustomRoomStatus] = useState("available");
 
-  const [studentId, setStudentId] = useState('');
-  const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState(''); 
-  const [studentGroup, setStudentGroup] = useState('DB2601A');
+  const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentGroup, setStudentGroup] = useState("DB2601A");
 
   const [addedRecords, setAddedRecords] = useState([]);
 
   const handleRemove = (id) => {
-    setAddedRecords(addedRecords.filter(r => r.id !== id));
+    setAddedRecords(addedRecords.filter((r) => r.id !== id));
   };
 
   const removeGroupTag = (g) => {
-    setGroups(groups.filter(item => item !== g));
+    setGroups(groups.filter((item) => item !== g));
   };
 
   // 手动添加讲师时切换时间槽逻辑（仅 Part-time 可编辑）
   const toggleLecturerSlot = (day, slot) => {
-    if (lecturerType === 'Full-time') return;
+    if (lecturerType === "Full-time") return;
     const key = `${day}-${slot}`;
-    const currentStatus = lecturerAvailability[key] || 'available';
-    const nextStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+    const currentStatus = lecturerAvailability[key] || "available";
+    const nextStatus =
+      currentStatus === "available" ? "unavailable" : "available";
     setLecturerAvailability({
       ...lecturerAvailability,
       [key]: nextStatus,
@@ -326,65 +384,65 @@ function ManualImport() {
   const handleAddRecord = () => {
     let newRec = null;
 
-    if (category === 'subject') {
+    if (category === "subject") {
       if (!subjectCode.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Course',
+        type: "Course",
         name: `${subjectCode} — ${subjectName}`,
-        detail: `${hours} hrs/wk · ${groups.join(', ')}`,
+        detail: `${hours} hrs/wk · ${groups.join(", ")}`,
       };
-    } else if (category === 'group') {
+    } else if (category === "group") {
       if (!groupCode.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Group',
+        type: "Group",
         name: groupCode,
         detail: `Size: ${classSize} · Year 1`,
       };
-      setGroupCode('');
-    } else if (category === 'lecturer') {
+      setGroupCode("");
+    } else if (category === "lecturer") {
       if (!lecturerName.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Lecturer',
+        type: "Lecturer",
         name: lecturerName,
         employmentType: lecturerType, // 保存全职/兼职身份
-        detail: `${lecturerType} · ${lecturerEmail || 'No email'}`,
+        detail: `${lecturerType} · ${lecturerEmail || "No email"}`,
       };
-      setLecturerName('');
-      setLecturerEmail('');
-      setLecturerType('Full-time');
+      setLecturerName("");
+      setLecturerEmail("");
+      setLecturerType("Full-time");
       setLecturerAvailability({});
-    } else if (category === 'classroom') {
+    } else if (category === "classroom") {
       if (!roomCode.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Room',
+        type: "Room",
         name: roomCode,
         detail: `${roomType} (Cap: ${roomCapacity})`,
       };
-      setRoomCode('');
-    } else if (category === 'rooms') {
+      setRoomCode("");
+    } else if (category === "rooms") {
       if (!customRoomName.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Venue Status',
+        type: "Venue Status",
         name: customRoomName,
         detail: `${customRoomType} · Cap: ${customRoomCap} · Status: ${customRoomStatus}`,
       };
-      setCustomRoomName('');
-    } else if (category === 'student') {
+      setCustomRoomName("");
+    } else if (category === "student") {
       if (!studentId.trim() || !studentName.trim()) return;
       newRec = {
         id: Date.now(),
-        type: 'Student',
+        type: "Student",
         name: `${studentId} — ${studentName}`,
-        detail: `Group ${studentGroup} · ${studentEmail || 'No email'}`,
+        detail: `Group ${studentGroup} · ${studentEmail || "No email"}`,
       };
-      setStudentId('');
-      setStudentName('');
-      setStudentEmail('');
+      setStudentId("");
+      setStudentName("");
+      setStudentEmail("");
     }
 
     if (newRec) {
@@ -394,13 +452,20 @@ function ManualImport() {
 
   const getAddButtonText = () => {
     switch (category) {
-      case 'subject': return 'Add subject';
-      case 'group': return 'Add group';
-      case 'lecturer': return 'Add lecturer';
-      case 'classroom': return 'Add classroom';
-      case 'rooms': return 'Add room & status';
-      case 'student': return 'Add student';
-      default: return 'Add record';
+      case "subject":
+        return "Add subject";
+      case "group":
+        return "Add group";
+      case "lecturer":
+        return "Add lecturer";
+      case "classroom":
+        return "Add classroom";
+      case "rooms":
+        return "Add room & status";
+      case "student":
+        return "Add student";
+      default:
+        return "Add record";
     }
   };
 
@@ -415,12 +480,13 @@ function ManualImport() {
                 <button
                   type="button"
                   onClick={() => setCategory(cat.id)}
-                  aria-current={active ? 'true' : undefined}
+                  aria-current={active ? "true" : undefined}
                   className={[
-                    'flex h-11 w-full items-center gap-3 border-l-[3px] px-3 text-left text-xs',
-                    active ? 'border-navy-700 bg-navy-50 font-semibold text-navy-700' : 'border-transparent text-ink-2 hover:bg-panel',
-                  ].join(' ')}
-                >
+                    "flex h-11 w-full items-center gap-3 border-l-[3px] px-3 text-left text-xs",
+                    active
+                      ? "border-navy-700 bg-navy-50 font-semibold text-navy-700"
+                      : "border-transparent text-ink-2 hover:bg-panel",
+                  ].join(" ")}>
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-panel text-[11px] font-bold text-ink-2">
                     {cat.badge}
                   </span>
@@ -443,15 +509,20 @@ function ManualImport() {
       <main className="min-w-0 flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-4xl">
           <div className="rounded-lg border border-line bg-white p-6 shadow-sm">
-            
-            {category === 'subject' && (
+            {category === "subject" && (
               <>
-                <h2 className="text-sm font-bold text-ink">Add a subject / course</h2>
-                <p className="text-xs text-ink-3">Used across every group that teaches it</p>
+                <h2 className="text-sm font-bold text-ink">
+                  Add a subject / course
+                </h2>
+                <p className="text-xs text-ink-3">
+                  Used across every group that teaches it
+                </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Subject code</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Subject code
+                    </label>
                     <input
                       type="text"
                       value={subjectCode}
@@ -460,12 +531,13 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Session type</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Session type
+                    </label>
                     <select
                       value={sessionType}
                       onChange={(e) => setSessionType(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                    >
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Lecture + tutorial</option>
                       <option>Lecture only</option>
                       <option>Practical / Lab</option>
@@ -474,7 +546,9 @@ function ManualImport() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Subject name</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                    Subject name
+                  </label>
                   <input
                     type="text"
                     value={subjectName}
@@ -485,17 +559,23 @@ function ManualImport() {
 
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Hours / week</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Hours / week
+                    </label>
                     <input
                       type="text"
                       value={hours}
                       onChange={(e) => setHours(e.target.value)}
                       className="mt-1 w-full rounded border border-line-strong px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
                     />
-                    <span className="mt-1 block text-[10px] text-ink-4">split into 2 sessions of 2 hrs</span>
+                    <span className="mt-1 block text-[10px] text-ink-4">
+                      split into 2 sessions of 2 hrs
+                    </span>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room type</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Room type
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="Standard room">Standard room</option>
                       <option value="Computer lab">Computer lab</option>
@@ -503,7 +583,9 @@ function ManualImport() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Category</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Category
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Accounting</option>
                       <option>Business</option>
@@ -514,30 +596,50 @@ function ManualImport() {
 
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Groups taking this subject</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Groups taking this subject
+                    </label>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded border border-line-strong bg-white p-1.5 min-h-[36px]">
                       {groups.map((g) => (
-                        <span key={g} className="inline-flex items-center gap-1 rounded bg-[#EBF1F6] px-2 py-0.5 text-xs font-medium text-navy-800">
+                        <span
+                          key={g}
+                          className="inline-flex items-center gap-1 rounded bg-[#EBF1F6] px-2 py-0.5 text-xs font-medium text-navy-800">
                           {g}
-                          <button onClick={() => removeGroupTag(g)} className="text-navy-500 hover:text-navy-900 font-bold">×</button>
+                          <button
+                            onClick={() => removeGroupTag(g)}
+                            className="text-navy-500 hover:text-navy-900 font-bold">
+                            ×
+                          </button>
                         </span>
                       ))}
-                      <button onClick={() => setGroups([...groups, `DB260${groups.length + 3}C`])} className="text-xs text-navy-600 hover:underline px-1 font-semibold">
+                      <button
+                        onClick={() =>
+                          setGroups([...groups, `DB260${groups.length + 3}C`])
+                        }
+                        className="text-xs text-navy-600 hover:underline px-1 font-semibold">
                         + Add group
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Lecturer (optional)</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Lecturer (optional)
+                    </label>
                     <div className="mt-1 flex items-center rounded border border-line-strong bg-white p-1.5 min-h-[36px]">
                       {lecturer ? (
                         <span className="inline-flex items-center gap-1 rounded bg-[#EBF1F6] px-2 py-0.5 text-xs font-medium text-navy-800">
                           {lecturer}
-                          <button onClick={() => setLecturer('')} className="text-navy-500 hover:text-navy-900 font-bold">×</button>
+                          <button
+                            onClick={() => setLecturer("")}
+                            className="text-navy-500 hover:text-navy-900 font-bold">
+                            ×
+                          </button>
                         </span>
                       ) : (
-                        <span className="text-xs text-ink-4 px-1">Click to assign lecturer</span>
+                        <span className="text-xs text-ink-4 px-1">
+                          Click to assign lecturer
+                        </span>
                       )}
                     </div>
                   </div>
@@ -551,26 +653,34 @@ function ManualImport() {
                     onChange={(e) => setNeedsLab(e.target.checked)}
                     className="h-4 w-4 rounded border-line-strong text-navy-700 focus:ring-navy-500"
                   />
-                  <label htmlFor="lab" className="text-xs text-ink font-medium">Needs a lab room</label>
+                  <label htmlFor="lab" className="text-xs text-ink font-medium">
+                    Needs a lab room
+                  </label>
                 </div>
               </>
             )}
 
-            {category === 'group' && (
+            {category === "group" && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a group</h2>
-                <p className="text-xs text-ink-3">Belongs to an intake — create the intake first if it's new</p>
+                <p className="text-xs text-ink-3">
+                  Belongs to an intake — create the intake first if it's new
+                </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Intake</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Intake
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>January 2026</option>
                       <option>May 2026</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">&nbsp;</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      &nbsp;
+                    </label>
                     <button className="mt-1 flex items-center gap-2 rounded border border-line-strong bg-panel px-3 py-1.5 text-xs font-semibold text-navy-700">
                       <span>+</span> New intake...
                     </button>
@@ -579,7 +689,9 @@ function ManualImport() {
 
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Group code</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Group code
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. DB2601C"
@@ -589,7 +701,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Programme</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Programme
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Diploma in Business</option>
                       <option>Diploma in Accounting</option>
@@ -599,7 +713,9 @@ function ManualImport() {
 
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Class size</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Class size
+                    </label>
                     <input
                       type="text"
                       value={classSize}
@@ -608,14 +724,18 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Year</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Year
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Year 1</option>
                       <option>Year 2</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Intake month</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Intake month
+                    </label>
                     <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Jan 2026</option>
                     </select>
@@ -624,14 +744,18 @@ function ManualImport() {
               </>
             )}
 
-            {category === 'lecturer' && (
+            {category === "lecturer" && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a lecturer</h2>
-                <p className="text-xs text-ink-3">Register a teaching staff member into the system</p>
+                <p className="text-xs text-ink-3">
+                  Register a teaching staff member into the system
+                </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Lecturer full name</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Lecturer full name
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. Dr. Alan Turing"
@@ -641,7 +765,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Email address</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Email address
+                    </label>
                     <input
                       type="email"
                       placeholder="e.g. alan@college.edu.my"
@@ -653,45 +779,57 @@ function ManualImport() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Employment type</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                    Employment type
+                  </label>
                   <select
                     value={lecturerType}
                     onChange={(e) => setLecturerType(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                  >
+                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
-                    <option value="Contract / Visiting">Contract / Visiting</option>
+                    <option value="Contract / Visiting">
+                      Contract / Visiting
+                    </option>
                   </select>
                 </div>
 
                 {/* 只有当选择 Part-time 时才显示每周可用时间网格；Full-time 直接隐藏 */}
-                {lecturerType === 'Part-time' && (
+                {lecturerType === "Part-time" && (
                   <div className="mt-4 border-t border-line pt-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-4 mb-1">
                       Weekly availability — click a cell to toggle
                     </div>
                     <div className="grid grid-cols-6 gap-1 text-[10px] text-center mt-2">
                       <div></div>
-                      {DAYS.map(d => <div key={d} className="font-semibold text-ink-3">{d}</div>)}
-                      {TIME_SLOTS.map(slot => (
+                      {DAYS.map((d) => (
+                        <div key={d} className="font-semibold text-ink-3">
+                          {d}
+                        </div>
+                      ))}
+                      {TIME_SLOTS.map((slot) => (
                         <div key={`row-${slot}`} className="contents">
-                          <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">{slot}</div>
-                          {DAYS.map(day => {
-                            const status = lecturerAvailability[`${day}-${slot}`] || 'available';
-                            let bgClass = 'bg-emerald-50 text-emerald-700 font-medium border-emerald-300';
-                            let textLabel = 'avail';
-                            if (status === 'unavailable') {
-                              bgClass = 'bg-[#FBE2E6] text-danger font-medium border-red-300';
-                              textLabel = 'off';
+                          <div className="text-[9px] text-ink-4 flex items-center justify-end pr-1">
+                            {slot}
+                          </div>
+                          {DAYS.map((day) => {
+                            const status =
+                              lecturerAvailability[`${day}-${slot}`] ||
+                              "available";
+                            let bgClass =
+                              "bg-emerald-50 text-emerald-700 font-medium border-emerald-300";
+                            let textLabel = "avail";
+                            if (status === "unavailable") {
+                              bgClass =
+                                "bg-[#FBE2E6] text-danger font-medium border-red-300";
+                              textLabel = "off";
                             }
                             return (
                               <button
                                 key={`${day}-${slot}`}
                                 type="button"
                                 className={`h-7 rounded border ${bgClass} flex items-center justify-center text-[9px] transition-all hover:opacity-80`}
-                                onClick={() => toggleLecturerSlot(day, slot)}
-                              >
+                                onClick={() => toggleLecturerSlot(day, slot)}>
                                 {textLabel}
                               </button>
                             );
@@ -704,14 +842,20 @@ function ManualImport() {
               </>
             )}
 
-            {category === 'classroom' && (
+            {category === "classroom" && (
               <>
-                <h2 className="text-sm font-bold text-ink">Add a classroom / venue</h2>
-                <p className="text-xs text-ink-3">Define rooms and labs available for scheduling</p>
+                <h2 className="text-sm font-bold text-ink">
+                  Add a classroom / venue
+                </h2>
+                <p className="text-xs text-ink-3">
+                  Define rooms and labs available for scheduling
+                </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room code / name</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Room code / name
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. LAB-302"
@@ -721,7 +865,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room capacity</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Room capacity
+                    </label>
                     <input
                       type="number"
                       value={roomCapacity}
@@ -732,12 +878,13 @@ function ManualImport() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Facility type</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                    Facility type
+                  </label>
                   <select
                     value={roomType}
                     onChange={(e) => setRoomType(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                  >
+                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option value="Standard room">Standard room</option>
                     <option value="Computer lab">Computer lab</option>
                     <option value="Lecture hall">Lecture hall</option>
@@ -746,14 +893,20 @@ function ManualImport() {
               </>
             )}
 
-            {category === 'rooms' && (
+            {category === "rooms" && (
               <>
-                <h2 className="text-sm font-bold text-ink">Add room & maintenance status</h2>
-                <p className="text-xs text-ink-3">Configure a room and set its operational or maintenance state</p>
+                <h2 className="text-sm font-bold text-ink">
+                  Add room & maintenance status
+                </h2>
+                <p className="text-xs text-ink-3">
+                  Configure a room and set its operational or maintenance state
+                </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room name / code</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Room name / code
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. BR-105"
@@ -763,7 +916,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Capacity (Seats)</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Capacity (Seats)
+                    </label>
                     <input
                       type="number"
                       value={customRoomCap}
@@ -775,24 +930,26 @@ function ManualImport() {
 
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Room Type</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Room Type
+                    </label>
                     <select
                       value={customRoomType}
                       onChange={(e) => setCustomRoomType(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                    >
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="Standard room">Standard room</option>
                       <option value="Computer lab">Computer lab</option>
                       <option value="Lecture hall">Lecture hall</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Operational Status</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Operational Status
+                    </label>
                     <select
                       value={customRoomStatus}
                       onChange={(e) => setCustomRoomStatus(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                    >
+                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="available">Available (Normal)</option>
                       <option value="maintenance">Under Maintenance</option>
                       <option value="out_of_service">Out of Service</option>
@@ -802,14 +959,18 @@ function ManualImport() {
               </>
             )}
 
-            {category === 'student' && (
+            {category === "student" && (
               <>
                 <h2 className="text-sm font-bold text-ink">Add a student</h2>
-                <p className="text-xs text-ink-3">Enroll an individual student into a base group</p>
+                <p className="text-xs text-ink-3">
+                  Enroll an individual student into a base group
+                </p>
 
                 <div className="mt-5 grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Student ID</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Student ID
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. 2601099"
@@ -819,7 +980,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Full name</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Full name
+                    </label>
                     <input
                       type="text"
                       placeholder="e.g. John Doe"
@@ -829,7 +992,9 @@ function ManualImport() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Email address</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                      Email address
+                    </label>
                     <input
                       type="email"
                       placeholder="e.g. john@college.edu.my"
@@ -841,12 +1006,13 @@ function ManualImport() {
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">Assigned group</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
+                    Assigned group
+                  </label>
                   <select
                     value={studentGroup}
                     onChange={(e) => setStudentGroup(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none"
-                  >
+                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option>DB2601A</option>
                     <option>DB2601B</option>
                     <option>DB2602C</option>
@@ -854,18 +1020,18 @@ function ManualImport() {
                 </div>
               </>
             )}
-
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
-            <button type="button" className="h-[30px] rounded border border-line-strong bg-white px-4 text-xs font-medium text-ink-2 hover:bg-panel">
+            <button
+              type="button"
+              className="h-[30px] rounded border border-line-strong bg-white px-4 text-xs font-medium text-ink-2 hover:bg-panel">
               Cancel
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleAddRecord}
-              className="h-[30px] rounded bg-navy-700 px-4 text-xs font-semibold text-white hover:bg-navy-900"
-            >
+              className="h-[30px] rounded bg-navy-700 px-4 text-xs font-semibold text-white hover:bg-navy-900">
               {getAddButtonText()}
             </button>
           </div>
@@ -878,31 +1044,39 @@ function ManualImport() {
               </div>
               <div className="divide-y divide-line bg-white rounded-b-md border-x border-b border-line">
                 {addedRecords.map((rec) => {
-                  const isLecturer = rec.type === 'Lecturer';
-                  const isFullTime = rec.employmentType === 'Full-time';
+                  const isLecturer = rec.type === "Lecturer";
+                  const isFullTime = rec.employmentType === "Full-time";
 
                   return (
-                    <div key={rec.id} className="flex items-center justify-between p-3 text-xs">
+                    <div
+                      key={rec.id}
+                      className="flex items-center justify-between p-3 text-xs">
                       <div className="flex items-center gap-3">
-                        <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">{rec.type}</span>
-                        <span className="font-semibold text-ink">{rec.name}</span>
+                        <span className="rounded bg-panel px-2 py-0.5 font-medium text-ink-2 text-[11px]">
+                          {rec.type}
+                        </span>
+                        <span className="font-semibold text-ink">
+                          {rec.name}
+                        </span>
                       </div>
                       <div className="flex items-center gap-6">
                         {isLecturer ? (
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isFullTime ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
                               {rec.employmentType}
                             </span>
                             <span className="text-ink-3">·</span>
-                            <span className="text-ink-3">{rec.detail.split(' · ')[1]}</span>
+                            <span className="text-ink-3">
+                              {rec.detail.split(" · ")[1]}
+                            </span>
                           </div>
                         ) : (
                           <span className="text-ink-3">{rec.detail}</span>
                         )}
-                        <button 
+                        <button
                           onClick={() => handleRemove(rec.id)}
-                          className="text-red-600 hover:underline"
-                        >
+                          className="text-red-600 hover:underline">
                           Remove
                         </button>
                       </div>
@@ -912,7 +1086,6 @@ function ManualImport() {
               </div>
             </div>
           )}
-
         </div>
       </main>
     </div>
@@ -928,10 +1101,21 @@ export default function ImportDataPage() {
   return (
     <div className="min-h-0 flex-1 overflow-auto flex flex-col">
       <div className="border-b border-line bg-white px-6 pt-3 shrink-0">
-        <Tabs tabs={TABS} value={tab} onChange={(id) => setParams({ tab: id })} label="Import mode" />
+        <Tabs
+          tabs={TABS}
+          value={tab}
+          onChange={(id) => setParams({ tab: id })}
+          label="Import mode"
+        />
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        {tab === "bulk" ? <div className="p-6"><BulkImport /></div> : <ManualImport />}
+        {tab === "bulk" ? (
+          <div className="p-6">
+            <BulkImport />
+          </div>
+        ) : (
+          <ManualImport />
+        )}
       </div>
     </div>
   );

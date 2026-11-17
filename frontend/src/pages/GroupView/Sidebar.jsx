@@ -1,29 +1,58 @@
 // src/pages/GroupView/Sidebar.jsx
-import { useMemo, useState } from 'react'
-import { CONSTRAINTS } from '../../data/timetable.js'
+import { useMemo, useState } from "react";
+import { CONSTRAINTS } from "../../data/timetable.js";
 
-const sectionLabel = 'px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-4'
+export const ALL_ID = "__all__";
 
-export default function Sidebar({ groups, selectedId, onSelect, view = 'group', resources = [] }) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(true)
+const sectionLabel =
+  "px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-4";
+
+export default function Sidebar({
+  groups,
+  selectedId,
+  onSelect,
+  view = "group",
+  resources = [],
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(true);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return q ? groups.filter((g) => g.id.toLowerCase().includes(q)) : groups
-  }, [groups, query])
+    const q = query.trim().toLowerCase();
+    return q ? groups.filter((g) => g.id.toLowerCase().includes(q)) : groups;
+  }, [groups, query]);
 
   // 根据当前视图动态确定分类标题与搜索提示
-  const sectionCategory = view === 'lecturer' ? 'Lecturers' : view === 'room' ? 'Rooms' : 'Intakes'
-  const sectionTitle = view === 'lecturer' ? 'All Lecturers' : view === 'room' ? 'All Facilities' : 'All Groups'
-  const searchPlaceholder = view === 'lecturer' ? 'Search lecturers…' : view === 'room' ? 'Search rooms…' : 'Search groups, subjects…'
+  const sectionCategory =
+    view === "lecturer" ? "Lecturers" : view === "room" ? "Rooms" : "Intakes";
+  const sectionTitle =
+    view === "lecturer"
+      ? "All Lecturers"
+      : view === "room"
+        ? "All Facilities"
+        : "All Groups";
+  const searchPlaceholder =
+    view === "lecturer"
+      ? "Search lecturers…"
+      : view === "room"
+        ? "Search rooms…"
+        : "Search groups, subjects…";
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white">
       <div className="p-3">
         <label className="flex h-[30px] items-center gap-2 rounded border border-line bg-panel px-2.5 focus-within:border-navy-500">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden fill="none" stroke="#8592A3" strokeWidth="1.5" strokeLinecap="round">
-            <circle cx="6" cy="6" r="4.5" /><path d="M9.5 9.5 L13 13" />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            aria-hidden
+            fill="none"
+            stroke="#8592A3"
+            strokeWidth="1.5"
+            strokeLinecap="round">
+            <circle cx="6" cy="6" r="4.5" />
+            <path d="M9.5 9.5 L13 13" />
           </svg>
           <input
             value={query}
@@ -35,56 +64,85 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group', 
         </label>
       </div>
 
-      <div className={sectionLabel.replace('pt-4', 'pt-1')}>{sectionCategory}</div>
+      <div className={sectionLabel.replace("pt-4", "pt-1")}>
+        {sectionCategory}
+      </div>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-2 px-3 py-1.5 text-left text-[13px] font-semibold text-ink hover:bg-panel"
-      >
+        className="flex items-center gap-2 px-3 py-1.5 text-left text-[13px] font-semibold text-ink hover:bg-panel">
         <svg
-          width="8" height="8" viewBox="0 0 8 8" aria-hidden
-          className={`text-ink-3 transition-transform ${open ? 'rotate-90' : ''}`}
-        >
+          width="8"
+          height="8"
+          viewBox="0 0 8 8"
+          aria-hidden
+          className={`text-ink-3 transition-transform ${open ? "rotate-90" : ""}`}>
           <path d="M1 0 L7 4 L1 8 Z" fill="currentColor" />
         </svg>
         <span>{sectionTitle}</span>
-        <span className="ml-auto text-[11px] font-normal text-ink-4">{groups.length}</span>
+        <span className="ml-auto text-[11px] font-normal text-ink-4">
+          {groups.length}
+        </span>
       </button>
 
       {open && (
         <ul>
+          {!query.trim() && groups.length > 1 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => onSelect(ALL_ID)}
+                aria-current={selectedId === ALL_ID ? "true" : undefined}
+                className={[
+                  "flex h-[26px] w-full items-center border-l-[3px] pl-[39px] pr-3 text-left text-xs",
+                  selectedId === ALL_ID
+                    ? "border-navy-700 bg-navy-50 font-semibold text-navy-700"
+                    : "border-transparent text-ink-2 hover:bg-panel",
+                ].join(" ")}>
+                <span className="truncate">Show all</span>
+                <span className="ml-auto shrink-0 text-[11px] font-normal text-ink-4">
+                  {groups.length}
+                </span>
+              </button>
+            </li>
+          )}
           {filtered.map((g) => {
-            const active = g.id === selectedId
+            const active = g.id === selectedId;
             return (
               <li key={g.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(g.id)}
-                  aria-current={active ? 'true' : undefined}
+                  aria-current={active ? "true" : undefined}
                   className={[
-                    'flex h-[26px] w-full items-center border-l-[3px] pl-[39px] pr-3 text-left text-xs',
+                    "flex h-[26px] w-full items-center border-l-[3px] pl-[39px] pr-3 text-left text-xs",
                     active
-                      ? 'border-navy-700 bg-navy-50 font-semibold text-navy-700'
-                      : 'border-transparent text-ink-2 hover:bg-panel',
-                  ].join(' ')}
-                >
+                      ? "border-navy-700 bg-navy-50 font-semibold text-navy-700"
+                      : "border-transparent text-ink-2 hover:bg-panel",
+                  ].join(" ")}>
                   <span className="truncate">{g.id}</span>
-                  {view === 'group' && (
+                  {view === "group" && (
                     <span
                       className={[
-                        'ml-auto text-[11px] font-normal shrink-0',
-                        g.alert ? 'text-danger' : active ? 'text-navy-700' : 'text-ink-4',
-                      ].join(' ')}
-                    >
-                      {g.count}{g.alert && ' !'}
+                        "ml-auto text-[11px] font-normal shrink-0",
+                        g.alert
+                          ? "text-danger"
+                          : active
+                            ? "text-navy-700"
+                            : "text-ink-4",
+                      ].join(" ")}>
+                      {g.count}
+                      {g.alert && " !"}
                     </span>
                   )}
                 </button>
               </li>
-            )
+            );
           })}
-          {filtered.length === 0 && <li className="px-10 py-2 text-xs text-ink-4">No items match</li>}
+          {filtered.length === 0 && (
+            <li className="px-10 py-2 text-xs text-ink-4">No items match</li>
+          )}
         </ul>
       )}
 
@@ -93,7 +151,9 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group', 
       <ul>
         {resources.map((r) => (
           <li key={r.label}>
-            <button type="button" className="flex h-7 w-full items-center px-3 text-[13px] text-ink-2 hover:bg-panel">
+            <button
+              type="button"
+              className="flex h-7 w-full items-center px-3 text-[13px] text-ink-2 hover:bg-panel">
               {r.label}
               <span className="ml-auto text-[11px] text-ink-4">{r.count}</span>
             </button>
@@ -108,11 +168,12 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group', 
           <li key={c.label}>
             <button
               type="button"
-              className={`flex h-7 w-full items-center px-3 text-[13px] hover:bg-panel ${c.soft ? 'text-[#8A6212]' : 'text-ink-2'}`}
-            >
+              className={`flex h-7 w-full items-center px-3 text-[13px] hover:bg-panel ${c.soft ? "text-[#8A6212]" : "text-ink-2"}`}>
               {c.label}
               {c.soft && (
-                <span className="ml-auto rounded-full bg-[#FDF2DF] px-2 py-px text-[10px] font-semibold">soft</span>
+                <span className="ml-auto rounded-full bg-[#FDF2DF] px-2 py-px text-[10px] font-semibold">
+                  soft
+                </span>
               )}
             </button>
           </li>
@@ -122,11 +183,10 @@ export default function Sidebar({ groups, selectedId, onSelect, view = 'group', 
       <div className="mt-auto p-3">
         <button
           type="button"
-          className="h-[34px] w-full rounded border border-dashed border-line-strong text-[13px] text-ink-3 hover:bg-panel"
-        >
+          className="h-[34px] w-full rounded border border-dashed border-line-strong text-[13px] text-ink-3 hover:bg-panel">
           + Add constraint
         </button>
       </div>
     </aside>
-  )
+  );
 }
