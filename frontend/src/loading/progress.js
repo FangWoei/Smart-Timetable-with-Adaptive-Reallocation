@@ -33,7 +33,7 @@ export function startTask() {
 }
 
 /** For page changes: show the bar briefly even when the new page loads nothing. */
-export function pulse(ms = 450) {
+export function pulse(ms = 250) {
   const end = startTask();
   setTimeout(end, ms);
 }

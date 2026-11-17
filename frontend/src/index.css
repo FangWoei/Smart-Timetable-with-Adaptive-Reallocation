@@ -53,3 +53,9 @@ body {
     transition: none !important;
   }
 }
+/* Loading overlay: things that circle the progress ring */
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
