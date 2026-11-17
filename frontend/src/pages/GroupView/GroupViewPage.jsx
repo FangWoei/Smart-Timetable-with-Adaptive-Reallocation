@@ -38,9 +38,11 @@ const toUnplacedCard = (e) => {
   const entryId = e.id ?? e.entry_id ?? null;
   const code = e.class_code ?? e.code ?? String(entryId ?? '');
   const needsLab = !!(e.needs_lab ?? e.needsLab);
+  const sessionId = e.session_id != null ? String(e.session_id) : null;
   return {
-    id: entryId ?? code,
+    id: sessionId ?? entryId ?? code,
     entryId,
+    sessionId,
     code,
     name: e.module ?? e.name ?? code,
     span: e.hours ?? e.span ?? 2,
@@ -63,6 +65,7 @@ export default function GroupViewPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedLessonData, setSelectedLessonData] = useState(null);
+  const [status, setStatus] = useState(null); // GET /timetable/status: draft / published
 
   // 当前正在拖的东西：{ source: 'unplaced' | 'grid', lesson } 或 null
   const [drag, setDrag] = useState(null);
@@ -88,6 +91,7 @@ export default function GroupViewPage() {
       setGroups(rows);
       setRun(timetable.run);
       setSelectedId((id) => id ?? rows[0]?.id ?? null);
+      api.getStatus().then(setStatus).catch(() => setStatus(null));
 
       roomPoolRef.current = (Array.isArray(rooms) ? rooms : [])
         .filter((r) => !r.deleted && !r.is_deleted && (!r.status || r.status === 'available'))
@@ -149,11 +153,9 @@ export default function GroupViewPage() {
     if (source === 'grid' && view !== 'room' && lesson.day === day && lesson.period === period) return;
 
     const entryId = lesson.entryId ?? null;
-    if (entryId == null) {
-      setError(
-        `"${name}" has no entry id, so it can't be saved. ` +
-          `GET /timetable needs to return an "id" (or "entry_id") for each entry.`,
-      );
+    const sessionId = lesson.sessionId ?? null;
+    if (entryId == null && sessionId == null) {
+      setError(`"${name}" has no id, so it can't be saved.`);
       return;
     }
 
@@ -185,15 +187,20 @@ export default function GroupViewPage() {
 
     setBusy(true);
     try {
-      try {
-        await api.updateEntry(entryId, { ...body, force: false });
-      } catch (err) {
-        // 后端报冲突（例如和别的班级撞教室 / 讲师）：显示原因，由你决定要不要强制放入
-        if (!window.confirm(`${err.message}\n\nPlace it anyway?`)) {
-          setError(err.message);
+      // 已排的课：改位置（PATCH）；Unplaced 的课：第一次放上去（POST .../place）
+      const send = (force) =>
+        entryId != null
+          ? api.updateEntry(entryId, { ...body, force })
+          : api.placeUnplaced(sessionId, { ...body, force });
+      // 后端报冲突（和别的班级撞教室 / 讲师）时返回 saved:false + problems：显示原因，由你决定要不要强制放入
+      const first = await send(false);
+      if (first && first.saved === false) {
+        const why = (first.problems ?? []).join("\n") || "This causes a conflict.";
+        if (!window.confirm(`${why}\n\nPlace it anyway?`)) {
+          setError(first.problems?.[0] ?? "Not saved: it causes a conflict.");
           return;
         }
-        await api.updateEntry(entryId, { ...body, force: true });
+        await send(true);
       }
       setSelectedLessonData(null);
       await load();
@@ -251,11 +258,51 @@ export default function GroupViewPage() {
     }
   }
 
-  // Auto-place all 会重新生成整个时间表，手动调整过的位置可能被覆盖
-  const handleAutoPlaceAll = () => {
-    if (!window.confirm('Auto-place regenerates the whole timetable and may undo your manual moves. Continue?')) return;
-    void handleGenerate();
-  };
+  // Auto-place all：只排还没排的课，已经排好的不会动
+  async function handleAutoPlaceAll() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await api.autoPlaceAll();
+      setMessage(
+        r.placed === 0 && r.unplaced === 0
+          ? "Nothing to place."
+          : `Placed ${r.placed} lesson(s)` + (r.unplaced ? `, ${r.unplaced} could not be placed.` : "."),
+      );
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Publish：讲师只能看到已发布的课表
+  async function handlePublish() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      if (status?.active_is_published) {
+        await api.unpublish();
+        setMessage("Unpublished. Lecturers no longer see this timetable.");
+      } else {
+        try {
+          await api.publish(false);
+        } catch (e) {
+          if (!/unplaced/i.test(e.message) || !window.confirm(`${e.message}\n\nPublish anyway?`)) throw e;
+          await api.publish(true);
+        }
+        setMessage("Published. Lecturers can now see this timetable.");
+      }
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleVerify() {
     setBusy(true);
@@ -264,14 +311,14 @@ export default function GroupViewPage() {
     try {
       const entries = groups.flatMap((g) =>
         g.lessons.map((l) => ({
-          lesson_id: l.code,
+          lesson_id: l.sessionId,
           room: l.room,
           day: l.day + 1,
           start_slot: l.period,
         })),
       );
       const seen = new Set();
-      const unique = entries.filter((e) => (seen.has(e.lesson_id) ? false : seen.add(e.lesson_id)));
+      const unique = entries.filter((e) => e.lesson_id && (seen.has(e.lesson_id) ? false : seen.add(e.lesson_id)));
       const r = await api.check(unique);
       setMessage(r.valid ? "No conflicts found." : `${r.problems.length} problems: ${r.problems[0]}`);
     } catch (e) {
@@ -378,8 +425,9 @@ export default function GroupViewPage() {
         onVerify={handleVerify}
         onToggleLock={handleToggleLock}
         selectedLocked={selectedLessonData ? !!selectedLessonData.lesson.locked : null}
-        onApprove={() => {}}
-        canApprove={conflicts === 0}
+        onApprove={handlePublish}
+        canApprove={conflicts === 0 && !busy}
+        isPublished={!!status?.active_is_published}
         onExportBatch={handleBatchExport}
         isExporting={isExporting}
         exportState={exportState}
