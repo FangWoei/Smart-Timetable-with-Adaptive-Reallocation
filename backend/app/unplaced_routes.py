@@ -78,8 +78,8 @@ def find_unplaced(sb, data=None, tt=None):
     return tt, data, [l for l in data["lessons"] if l["id"] not in placed]
 
 
-def unplaced_cards(sb, group=None, lecturer=None):
-    _, _, lessons = find_unplaced(sb)
+def unplaced_cards(sb, group=None, lecturer=None, tt=None):
+    _, _, lessons = find_unplaced(sb, tt=tt)
     cards = [card(l) for l in lessons]
     if group:
         cards = [c for c in cards if group in c["groups"]]

@@ -14,10 +14,20 @@ async function authedFetch(url, options = {}) {
 }
 
 async function request(path, options = {}) {
-  const res = await authedFetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
+  const send = () =>
+    authedFetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options.headers },
+    });
+  let res;
+  try {
+    res = await send();
+  } catch (err) {
+    // A dropped connection ("Failed to fetch"): reads are safe to try once more.
+    if (options.method && options.method !== "GET") throw err;
+    await new Promise((r) => setTimeout(r, 400));
+    res = await send();
+  }
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
