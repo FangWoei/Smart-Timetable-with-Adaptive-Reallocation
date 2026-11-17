@@ -1,18 +1,23 @@
 // src/pages/GroupView/GroupViewPage.jsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api, isPlacedEntry, toGridGroups } from "../../api";
-import BottomPanels from './BottomPanels.jsx';
-import LessonDetailsPanel from './LessonDetailsPanel.jsx';
-import Sidebar from "./Sidebar.jsx";
 import TimetableGrid from "../../components/TimetableGrid.jsx";
+import { refreshSemester } from "../../semester.js";
+import BottomPanels from "./BottomPanels.jsx";
+import LessonDetailsPanel from "./LessonDetailsPanel.jsx";
+import Sidebar, { ALL_ID } from "./Sidebar.jsx";
 import Toolbar from "./Toolbar.jsx";
 import { exportGroupBatchZip } from "./exportGroupPdf.jsx";
 
-const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 // 讲师 / 教室视图里课程代码带后缀："MAL1016 (GROUP)" / "MAL1016 · GROUP"，去掉后缀得到真正的课程代码
 const baseCode = (code) =>
-  String(code ?? '').replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*·.*$/, '').trim();
+  String(code ?? "")
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .replace(/\s*·.*$/, "")
+    .trim();
 
 // "Unassigned" 之类的占位文字不是真教室
 const realRoom = (r) => (r && !/^unassigned/i.test(r) ? r : null);
@@ -20,7 +25,7 @@ const realRoom = (r) => (r && !/^unassigned/i.test(r) ? r : null);
 // period 1 = 08:30，每个 period 一小时（可能有半小时，例如 1.5）
 const periodTime = (p) => {
   const m = Math.round(8 * 60 + 30 + (p - 1) * 60);
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 };
 
 // 两节课在同一天、时间有重叠
@@ -36,19 +41,21 @@ const overlaps = (l, day, period, span) => {
 // 后端的一条 entry（还没排上时间的）变成 Unplaced 卡片
 const toUnplacedCard = (e) => {
   const entryId = e.id ?? e.entry_id ?? null;
-  const code = e.class_code ?? e.code ?? String(entryId ?? '');
+  const code = e.class_code ?? e.code ?? String(entryId ?? "");
   const needsLab = !!(e.needs_lab ?? e.needsLab);
+  const sessionId = e.session_id != null ? String(e.session_id) : null;
   return {
-    id: entryId ?? code,
+    id: sessionId ?? entryId ?? code,
     entryId,
+    sessionId,
     code,
     name: e.module ?? e.name ?? code,
     span: e.hours ?? e.span ?? 2,
-    group: e.groups?.[0] ?? e.group ?? '',
-    lecturer: e.lecturer ?? '',
+    group: e.groups?.[0] ?? e.group ?? "",
+    lecturer: e.lecturer ?? "",
     needsLab,
-    tone: needsLab ? 'purple' : 'navy',
-    note: needsLab ? 'needs a lab room' : 'standard lecture',
+    tone: needsLab ? "purple" : "navy",
+    note: needsLab ? "needs a lab room" : "standard lecture",
   };
 };
 
@@ -61,8 +68,11 @@ export default function GroupViewPage() {
   const [zoom, setZoom] = useState(100);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const location = useLocation();
+  const [message, setMessage] = useState(location.state?.message ?? ""); // e.g. "Imported 22 classes"
   const [selectedLessonData, setSelectedLessonData] = useState(null);
+  const [loaded, setLoaded] = useState(false); // false until the first load finishes
+  const [status, setStatus] = useState(null); // GET /timetable/status: draft / published
 
   // 当前正在拖的东西：{ source: 'unplaced' | 'grid', lesson } 或 null
   const [drag, setDrag] = useState(null);
@@ -79,24 +89,40 @@ export default function GroupViewPage() {
       const [timetable, meta, rooms] = await Promise.all([
         api.getTimetable(),
         api.getGroups(),
-        typeof api.getRooms === 'function' ? api.getRooms().catch(() => []) : [],
+        typeof api.getRooms === "function"
+          ? api.getRooms().catch(() => [])
+          : [],
       ]);
 
-      const counts = Object.fromEntries(meta.map((g) => [g.code, g.student_count]));
+      const counts = Object.fromEntries(
+        meta.map((g) => [g.code, g.student_count]),
+      );
       const rows = toGridGroups(timetable, counts);
       setError("");
       setGroups(rows);
       setRun(timetable.run);
       setSelectedId((id) => id ?? rows[0]?.id ?? null);
+      api
+        .getStatus()
+        .then(setStatus)
+        .catch(() => setStatus(null));
+      void refreshSemester();
 
       roomPoolRef.current = (Array.isArray(rooms) ? rooms : [])
-        .filter((r) => !r.deleted && !r.is_deleted && (!r.status || r.status === 'available'))
+        .filter(
+          (r) =>
+            !r.deleted &&
+            !r.is_deleted &&
+            (!r.status || r.status === "available"),
+        )
         .map((r) => r.name ?? r.code ?? r.room_code)
         .filter(Boolean);
 
       // Unplaced：后端在 timetable.unplaced 里给的，加上 entries 里还没有 day / start_slot 的
       const entries = Array.isArray(timetable.entries) ? timetable.entries : [];
-      const fromBackend = Array.isArray(timetable.unplaced) ? timetable.unplaced : [];
+      const fromBackend = Array.isArray(timetable.unplaced)
+        ? timetable.unplaced
+        : [];
       const seen = new Set();
       setUnplacedLessons(
         [...fromBackend, ...entries.filter((e) => !isPlacedEntry(e))]
@@ -104,12 +130,23 @@ export default function GroupViewPage() {
           .filter((c) => (seen.has(c.id) ? false : seen.add(c.id))),
       );
     } catch (e) {
-      setError(e.message);
+      // no plan at all (new system, or the last plan was deleted) is not an error
+      if (!/no active timetable/i.test(e.message)) setError(e.message);
       setGroups([]);
+      setRun(null);
+      setUnplacedLessons([]);
+      api
+        .getStatus()
+        .then(setStatus)
+        .catch(() => setStatus(null));
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
   useEffect(() => {
+    // Loading data when the page opens is exactly what an effect is for
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
@@ -128,7 +165,7 @@ export default function GroupViewPage() {
     );
     const free = [...all].filter((r) => !taken.has(r));
     const matching = free.filter((r) => /lab/i.test(r) === !!needsLab);
-    return needsLab ? matching[0] ?? null : matching[0] ?? free[0] ?? null;
+    return needsLab ? (matching[0] ?? null) : (matching[0] ?? free[0] ?? null);
   };
 
   // 3. 放下：既处理「从 Unplaced 拖进来」，也处理「时间表里的课换位置」
@@ -138,7 +175,9 @@ export default function GroupViewPage() {
     setMessage("");
 
     if (lesson.locked) {
-      setError(`"${lesson.name || lesson.module || lesson.code}" is locked. Click it, then press Unlock.`);
+      setError(
+        `"${lesson.name || lesson.module || lesson.code}" is locked. Click it, then press Unlock.`,
+      );
       return;
     }
     const period = Math.ceil(slot / 2); // slot 是贴齐整点的奇数格，period 1 = 08:30
@@ -146,38 +185,54 @@ export default function GroupViewPage() {
     const name = lesson.name || lesson.module || baseCode(lesson.code);
 
     // 位置没变就什么都不做（教室视图里换教室除外）
-    if (source === 'grid' && view !== 'room' && lesson.day === day && lesson.period === period) return;
+    if (
+      source === "grid" &&
+      view !== "room" &&
+      lesson.day === day &&
+      lesson.period === period
+    )
+      return;
 
     const entryId = lesson.entryId ?? null;
-    if (entryId == null) {
-      setError(
-        `"${name}" has no entry id, so it can't be saved. ` +
-          `GET /timetable needs to return an "id" (or "entry_id") for each entry.`,
-      );
+    const sessionId = lesson.sessionId ?? null;
+    if (entryId == null && sessionId == null) {
+      setError(`"${name}" has no id, so it can't be saved.`);
       return;
     }
 
     // 从 Unplaced 拖进别的班级的时间表：先确认
-    if (source === 'unplaced' && view === 'group' && lesson.group && lesson.group !== entityId) {
-      if (!window.confirm(`"${name}" belongs to ${lesson.group}, but you dropped it onto ${entityId}. Continue?`)) return;
+    if (
+      source === "unplaced" &&
+      view === "group" &&
+      lesson.group &&
+      lesson.group !== entityId
+    ) {
+      if (
+        !window.confirm(
+          `"${name}" belongs to ${lesson.group}, but you dropped it onto ${entityId}. Continue?`,
+        )
+      )
+        return;
     }
 
     // 决定教室
     let room;
-    if (source === 'grid') {
-      room = view === 'room' ? realRoom(entityId) : realRoom(lesson.room); // 教室视图里拖到另一个教室 = 换教室
+    if (source === "grid") {
+      room = view === "room" ? realRoom(entityId) : realRoom(lesson.room); // 教室视图里拖到另一个教室 = 换教室
     }
     if (!room) {
       room = pickRoom({
         day,
         period,
         span,
-        needsLab: lesson.needsLab ?? /lab/i.test(lesson.room || ''),
+        needsLab: lesson.needsLab ?? /lab/i.test(lesson.room || ""),
         selfEntryId: entryId,
       });
     }
     if (!room) {
-      setError(`No free ${lesson.needsLab ? 'lab ' : ''}room at ${DAY_SHORT[day]} ${periodTime(period)} for "${name}".`);
+      setError(
+        `No free ${lesson.needsLab ? "lab " : ""}room at ${DAY_SHORT[day]} ${periodTime(period)} for "${name}".`,
+      );
       return;
     }
 
@@ -185,21 +240,29 @@ export default function GroupViewPage() {
 
     setBusy(true);
     try {
-      try {
-        await api.updateEntry(entryId, { ...body, force: false });
-      } catch (err) {
-        // 后端报冲突（例如和别的班级撞教室 / 讲师）：显示原因，由你决定要不要强制放入
-        if (!window.confirm(`${err.message}\n\nPlace it anyway?`)) {
-          setError(err.message);
+      // 已排的课：改位置（PATCH）；Unplaced 的课：第一次放上去（POST .../place）
+      const send = (force) =>
+        entryId != null
+          ? api.updateEntry(entryId, { ...body, force })
+          : api.placeUnplaced(sessionId, { ...body, force });
+      // 后端报冲突（和别的班级撞教室 / 讲师）时返回 saved:false + problems：显示原因，由你决定要不要强制放入
+      const first = await send(false);
+      if (first && first.saved === false) {
+        const why =
+          (first.problems ?? []).join("\n") || "This causes a conflict.";
+        if (!window.confirm(`${why}\n\nPlace it anyway?`)) {
+          setError(first.problems?.[0] ?? "Not saved: it causes a conflict.");
           return;
         }
-        await api.updateEntry(entryId, { ...body, force: true });
+        await send(true);
       }
       setSelectedLessonData(null);
       await load();
-      setMessage(`Placed "${name}" on ${DAY_SHORT[day]} ${periodTime(period)} · ${room}`);
+      setMessage(
+        `Placed "${name}" on ${DAY_SHORT[day]} ${periodTime(period)} · ${room}`,
+      );
     } catch (err) {
-      setError(err.message || 'Failed to update the timetable.');
+      setError(err.message || "Failed to update the timetable.");
     } finally {
       setBusy(false);
     }
@@ -213,7 +276,14 @@ export default function GroupViewPage() {
     onDrop: ({ day, start, entityId }) => {
       const d = drag;
       setDrag(null);
-      if (d) void handleCellDrop({ day, slot: start, entityId, source: d.source, lesson: d.lesson });
+      if (d)
+        void handleCellDrop({
+          day,
+          slot: start,
+          entityId,
+          source: d.source,
+          lesson: d.lesson,
+        });
     },
   };
 
@@ -226,7 +296,9 @@ export default function GroupViewPage() {
     setError("");
     try {
       await api.setLock(l.entryId, next);
-      setSelectedLessonData((s) => (s ? { ...s, lesson: { ...s.lesson, locked: next } } : s));
+      setSelectedLessonData((s) =>
+        s ? { ...s, lesson: { ...s.lesson, locked: next } } : s,
+      );
       await load();
       setMessage(next ? "Locked." : "Unlocked. You can drag it now.");
     } catch (e) {
@@ -242,7 +314,9 @@ export default function GroupViewPage() {
     setMessage("");
     try {
       const r = await api.generate();
-      setMessage(`Run #${r.run_id} · ${r.status} · penalty ${r.penalty} · ${r.seconds}s`);
+      setMessage(
+        `Run #${r.run_id} · ${r.status} · penalty ${r.penalty} · ${r.seconds}s`,
+      );
       await load();
     } catch (e) {
       setError(e.message);
@@ -251,11 +325,84 @@ export default function GroupViewPage() {
     }
   }
 
-  // Auto-place all 会重新生成整个时间表，手动调整过的位置可能被覆盖
-  const handleAutoPlaceAll = () => {
-    if (!window.confirm('Auto-place regenerates the whole timetable and may undo your manual moves. Continue?')) return;
-    void handleGenerate();
-  };
+  // Auto-place all：只排还没排的课，已经排好的不会动
+  async function handleAutoPlaceAll() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await api.autoPlaceAll();
+      setMessage(
+        r.placed === 0 && r.unplaced === 0
+          ? "Nothing to place."
+          : `Placed ${r.placed} lesson(s)` +
+              (r.unplaced ? `, ${r.unplaced} could not be placed.` : "."),
+      );
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Delete plan：不想要这份课表时整份删掉（回到上一份；没有上一份就变成空的）
+  async function handleDeletePlan() {
+    const id = status?.active_run_id ?? run?.id;
+    if (id == null) return;
+    const extra = status?.active_is_published
+      ? "\nIt is published, so lecturers will stop seeing it."
+      : "";
+    if (!window.confirm(`Delete plan #${id}? This cannot be undone.${extra}`))
+      return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const r = await api.deleteRun(id);
+      setMessage(
+        r.active_run_id != null
+          ? `Plan #${id} deleted. Showing plan #${r.active_run_id}.`
+          : `Plan #${id} deleted. There is no timetable now. Press Generate to make one.`,
+      );
+      setSelectedLessonData(null);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Publish：讲师只能看到已发布的课表
+  async function handlePublish() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      if (status?.active_is_published) {
+        await api.unpublish();
+        setMessage("Unpublished. Lecturers no longer see this timetable.");
+      } else {
+        try {
+          await api.publish(false);
+        } catch (e) {
+          if (
+            !/unplaced/i.test(e.message) ||
+            !window.confirm(`${e.message}\n\nPublish anyway?`)
+          )
+            throw e;
+          await api.publish(true);
+        }
+        setMessage("Published. Lecturers can now see this timetable.");
+      }
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleVerify() {
     setBusy(true);
@@ -264,16 +411,24 @@ export default function GroupViewPage() {
     try {
       const entries = groups.flatMap((g) =>
         g.lessons.map((l) => ({
-          lesson_id: l.code,
+          lesson_id: l.sessionId,
           room: l.room,
           day: l.day + 1,
           start_slot: l.period,
         })),
       );
       const seen = new Set();
-      const unique = entries.filter((e) => (seen.has(e.lesson_id) ? false : seen.add(e.lesson_id)));
+      const unique = entries.filter(
+        (e) =>
+          e.lesson_id &&
+          (seen.has(e.lesson_id) ? false : seen.add(e.lesson_id)),
+      );
       const r = await api.check(unique);
-      setMessage(r.valid ? "No conflicts found." : `${r.problems.length} problems: ${r.problems[0]}`);
+      setMessage(
+        r.valid
+          ? "No conflicts found."
+          : `${r.problems.length} problems: ${r.problems[0]}`,
+      );
     } catch (e) {
       setError(e.message);
     } finally {
@@ -282,13 +437,13 @@ export default function GroupViewPage() {
   }
 
   const displayRows = useMemo(() => {
-    if (view === 'group') {
+    if (view === "group") {
       return groups.map((g) => ({
         ...g,
         lessons: (g.lessons || []).map((l) => ({
           ...l,
-          lecturer: l.lecturer || 'TBA',
-          room: l.room || 'Unassigned',
+          lecturer: l.lecturer || "TBA",
+          room: l.room || "Unassigned",
         })),
       }));
     }
@@ -296,7 +451,7 @@ export default function GroupViewPage() {
     // 一门课属于多个 group 时只算一次，code 后面标出所有 group
     const tagged = (lesson) => ({
       ...lesson,
-      code: `${lesson.code || lesson.name} (${(lesson.groups?.length ? lesson.groups : []).join(', ')})`,
+      code: `${lesson.code || lesson.name} (${(lesson.groups?.length ? lesson.groups : []).join(", ")})`,
     });
     const byEntity = (keyOf, title) => {
       const map = new Map();
@@ -313,17 +468,18 @@ export default function GroupViewPage() {
       return [...map.values()].sort((a, b) => a.id.localeCompare(b.id));
     };
 
-    if (view === 'lecturer') return byEntity((l) => l.lecturer, 'Lecturer');
-    if (view === 'room') return byEntity((l) => realRoom(l.room), 'Campus Facility');
+    if (view === "lecturer") return byEntity((l) => l.lecturer, "Lecturer");
+    if (view === "room")
+      return byEntity((l) => realRoom(l.room), "Campus Facility");
 
     return groups;
   }, [view, groups]);
 
-  useEffect(() => {
-    if (displayRows.length > 0) {
-      setSelectedId((prev) => (displayRows.some((r) => r.id === prev) ? prev : displayRows[0].id));
-    }
-  }, [view, displayRows]);
+  // 当前选中的项：选的那项不在列表里时（例如切换了视图），退回第一项
+  const activeId =
+    selectedId === ALL_ID || displayRows.some((r) => r.id === selectedId)
+      ? selectedId
+      : (displayRows[0]?.id ?? null);
 
   const exportTargets = useMemo(
     () => displayRows.filter((r) => r.lessons && r.lessons.length > 0),
@@ -350,15 +506,32 @@ export default function GroupViewPage() {
   };
 
   // 真实数字：每条 entry 只算一次（一门课属于多个 group 也只算一次）
-  const placedIds = new Set(groups.flatMap((g) => g.lessons.map((l) => l.entryId)));
+  const placedIds = new Set(
+    groups.flatMap((g) => g.lessons.map((l) => l.entryId)),
+  );
   const sessions = placedIds.size;
   const resources = [
-    { label: 'Groups', count: groups.length },
-    { label: 'Lecturers', count: new Set(groups.flatMap((g) => g.lessons.map((l) => l.lecturer).filter(Boolean))).size },
-    { label: 'Rooms', count: new Set(groups.flatMap((g) => g.lessons.map((l) => realRoom(l.room)).filter(Boolean))).size },
+    { label: "Groups", count: groups.length },
+    {
+      label: "Lecturers",
+      count: new Set(
+        groups.flatMap((g) => g.lessons.map((l) => l.lecturer).filter(Boolean)),
+      ).size,
+    },
+    {
+      label: "Rooms",
+      count: new Set(
+        groups.flatMap((g) =>
+          g.lessons.map((l) => realRoom(l.room)).filter(Boolean),
+        ),
+      ).size,
+    },
   ];
 
-  const conflicts = groups.reduce((n, g) => n + g.lessons.filter((l) => l.conflict).length, 0);
+  const conflicts = groups.reduce(
+    (n, g) => n + g.lessons.filter((l) => l.conflict).length,
+    0,
+  );
   const placedLessonsCount = placedIds.size;
   const totalLessonsCount = placedIds.size + unplacedLessons.length;
 
@@ -377,9 +550,14 @@ export default function GroupViewPage() {
         onGenerate={handleGenerate}
         onVerify={handleVerify}
         onToggleLock={handleToggleLock}
-        selectedLocked={selectedLessonData ? !!selectedLessonData.lesson.locked : null}
-        onApprove={() => {}}
-        canApprove={conflicts === 0}
+        selectedLocked={
+          selectedLessonData ? !!selectedLessonData.lesson.locked : null
+        }
+        onApprove={handlePublish}
+        canApprove={conflicts === 0 && !busy}
+        isPublished={!!status?.active_is_published}
+        onDeletePlan={handleDeletePlan}
+        canDeletePlan={!busy && (status?.active_run_id ?? run?.id) != null}
         onExportBatch={handleBatchExport}
         isExporting={isExporting}
         exportState={exportState}
@@ -389,7 +567,7 @@ export default function GroupViewPage() {
       <div className="flex min-h-0 flex-1 overflow-hidden pb-8">
         <Sidebar
           groups={displayRows}
-          selectedId={selectedId}
+          selectedId={activeId}
           onSelect={setSelectedId}
           view={view}
           resources={resources}
@@ -398,7 +576,14 @@ export default function GroupViewPage() {
         <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
           <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
             <h1 className="text-[15px] font-semibold text-ink">
-              {view === 'group' ? `${groups.length} groups` : view === 'lecturer' ? `${displayRows.length} lecturers` : `${displayRows.length} rooms`} · {sessions} sessions
+              {!loaded
+                ? "Loading timetable…"
+                : view === "group"
+                  ? `${groups.length} groups`
+                  : view === "lecturer"
+                    ? `${displayRows.length} lecturers`
+                    : `${displayRows.length} rooms`}{" "}
+              · {sessions} sessions
             </h1>
             {run && (
               <p className="text-xs text-ink-3">
@@ -406,8 +591,12 @@ export default function GroupViewPage() {
               </p>
             )}
             {busy && <p className="text-xs text-ink-3">Working…</p>}
-            {message && <p className="text-xs font-medium text-navy-700">{message}</p>}
-            {error && <p className="text-xs font-medium text-danger">{error}</p>}
+            {message && (
+              <p className="text-xs font-medium text-navy-700">{message}</p>
+            )}
+            {error && (
+              <p className="text-xs font-medium text-danger">{error}</p>
+            )}
 
             <div className="ml-auto flex items-center rounded border border-line bg-white text-[13px] text-ink-2">
               <button
@@ -417,7 +606,9 @@ export default function GroupViewPage() {
                 className="px-2.5 py-0.5 hover:bg-panel">
                 −
               </button>
-              <span className="w-11 text-center text-[11px] text-ink-3">{zoom}%</span>
+              <span className="w-11 text-center text-[11px] text-ink-3">
+                {zoom}%
+              </span>
               <button
                 type="button"
                 aria-label="Zoom in"
@@ -435,16 +626,34 @@ export default function GroupViewPage() {
               </p>
             ) : (
               <>
-                <TimetableGrid
-                  groups={displayRows}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  zoom={zoom}
-                  selectedLesson={selectedLessonData}
-                  onLessonSelect={setSelectedLessonData}
-                  dnd={dnd}
-                  view={view}
-                />
+                {activeId === ALL_ID ? (
+                  <div className="space-y-6">
+                    {displayRows.map((g) => (
+                      <TimetableGrid
+                        key={g.id}
+                        groups={[g]}
+                        selectedId={g.id}
+                        onSelect={setSelectedId}
+                        zoom={zoom}
+                        selectedLesson={selectedLessonData}
+                        onLessonSelect={setSelectedLessonData}
+                        dnd={dnd}
+                        view={view}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <TimetableGrid
+                    groups={displayRows}
+                    selectedId={activeId}
+                    onSelect={setSelectedId}
+                    zoom={zoom}
+                    selectedLesson={selectedLessonData}
+                    onLessonSelect={setSelectedLessonData}
+                    dnd={dnd}
+                    view={view}
+                  />
+                )}
                 <BottomPanels
                   unplacedLessons={unplacedLessons}
                   onAutoPlaceAll={handleAutoPlaceAll}
@@ -467,14 +676,20 @@ export default function GroupViewPage() {
 
       <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-[#E8EDF4] px-4 text-[11px] text-ink-3 z-20">
         <div className="flex items-center gap-4">
-          <span className="text-ink">{placedLessonsCount} of {totalLessonsCount} lessons placed</span>
+          <span className="text-ink">
+            {placedLessonsCount} of {totalLessonsCount} lessons placed
+          </span>
           <span className="flex items-center gap-1.5 font-medium text-danger">
             <span className="size-1.5 rounded-full bg-danger"></span>
             {conflicts} conflicts
           </span>
         </div>
         <div className="flex items-center gap-4">
-           <span>{run ? `Run #${run.id} · ${run.status} · penalty ${run.penalty}` : 'No run yet'}</span>
+          <span>
+            {run
+              ? `Run #${run.id} · ${run.status} · penalty ${run.penalty}`
+              : "No run yet"}
+          </span>
         </div>
         <div className="font-medium"></div>
       </footer>

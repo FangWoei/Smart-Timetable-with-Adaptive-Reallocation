@@ -6,11 +6,11 @@ from app.auth import current_user, require_admin
 from app.deps import get_sb
 from db.calendar import dated_timetable, get_active_semester, list_holidays
 from db.lecturers import (
-    add_lecturer, get_lecturer, get_unavailable, list_lecturers,
-    remove_lecturer, set_part_time, set_unavailable, teaching_hours,
+    add_lecturer, get_lecturer, remove_lecturer, get_unavailable, list_lecturers, set_part_time,
+    set_unavailable, teaching_hours,
 )
+from db.repository import get_published_timetable, log_action
 from db.users import create_user
-from db.repository import get_active_timetable, log_action
 
 router = APIRouter()
 
@@ -21,8 +21,9 @@ class AvailabilityIn(BaseModel):
 
 class LecturerIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
-    email: str | None = Field(default=None, max_length=120)   # school email -> also lets them sign in
+    email: str | None = Field(default=None, max_length=200)      # given = may sign in
     is_part_time: bool = False
+    password: str | None = Field(default=None, min_length=8, max_length=72)   # first password
 
 
 class LecturerPatch(BaseModel):
@@ -50,9 +51,9 @@ def _availability(sb, lec):
 
 
 def _timetable_of(sb, lec, dated=False):
-    tt = get_active_timetable(sb)
+    tt = get_published_timetable(sb)
     if tt is None:
-        raise HTTPException(404, "No active timetable yet.")
+        raise HTTPException(404, "The timetable has not been published yet.")
     entries = [e for e in tt["entries"] if e["lecturer"] == lec["name"]]
     if dated:
         semester = get_active_semester(sb)
@@ -64,7 +65,7 @@ def _timetable_of(sb, lec, dated=False):
 
 
 def _hours_of(sb, lec):
-    tt = get_active_timetable(sb)
+    tt = get_published_timetable(sb)
     entries = [e for e in tt["entries"] if e["lecturer"] == lec["name"]] if tt else []
     semester = get_active_semester(sb)
     holidays = list_holidays(sb, semester["start_date"], semester["end_date"]) if semester else []
@@ -113,27 +114,32 @@ def read_lecturers(sb=Depends(get_sb)):
 
 @router.post("/lecturers", status_code=201, dependencies=[Depends(require_admin)])
 def create_lecturer(body: LecturerIn, sb=Depends(get_sb), admin=Depends(current_user)):
+    """Add a lecturer. With an email, the lecturer is also allowed to sign in."""
     try:
-        if body.email and body.email.strip():
-            # Same path as Users: creates the lecturer AND the invite-only login.
-            create_user(sb, body.email, "lecturer", body.name.strip(), body.is_part_time)
-            row = next(l for l in list_lecturers(sb) if l["name"] == " ".join(body.name.split()))
-        else:
-            row = add_lecturer(sb, body.name, body.is_part_time)
-            row = next(l for l in list_lecturers(sb) if l["id"] == row["id"])
+        lec = add_lecturer(sb, body.name, body.is_part_time)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    log_action(sb, "lecturer_added", {"lecturer_id": row["id"], "name": row["name"]}, admin["email"])
-    return row
+    if body.email:
+        try:
+            create_user(sb, body.email, "lecturer", lecturer_name=lec["name"],
+                        is_part_time=body.is_part_time, password=body.password)
+        except ValueError as e:
+            remove_lecturer(sb, lec["id"])          # do not leave a half-made lecturer
+            raise HTTPException(400, str(e))
+    log_action(sb, "add_lecturer", {"lecturer_id": lec["id"], "email": body.email},
+               admin["email"])
+    return next(l for l in list_lecturers(sb) if l["id"] == lec["id"])
 
 
 @router.delete("/lecturers/{lecturer_id}", dependencies=[Depends(require_admin)])
 def delete_lecturer(lecturer_id: int, sb=Depends(get_sb), admin=Depends(current_user)):
-    row = remove_lecturer(sb, lecturer_id)
-    if row is None:
-        raise HTTPException(404, "Lecturer not found")
-    log_action(sb, "lecturer_removed", {"lecturer_id": lecturer_id, "name": row["name"]}, admin["email"])
-    return {"ok": True}
+    """Delete a lecturer and their login. Their classes stay, with no lecturer."""
+    lec = _existing(sb, lecturer_id)
+    sb.table("allowed_users").delete().eq("lecturer_id", lecturer_id).eq("role", "lecturer").execute()
+    remove_lecturer(sb, lecturer_id)
+    log_action(sb, "delete_lecturer", {"lecturer_id": lecturer_id, "name": lec["name"]},
+               admin["email"])
+    return {"deleted": lecturer_id}
 
 
 @router.patch("/lecturers/{lecturer_id}", dependencies=[Depends(require_admin)])

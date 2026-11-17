@@ -1,4 +1,5 @@
 import { getToken, supabase } from "./auth/supabase.js";
+import { startTask } from "./loading/progress.js";
 
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
@@ -6,19 +7,34 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 // Adds the login token to a request, and sends the user back to the login page
 // if the server says the session is no longer valid.
 async function authedFetch(url, options = {}) {
-  const token = await getToken();
-  const headers = { ...options.headers };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401 && token) await supabase?.auth.signOut();
-  return res;
+  const endTask = startTask(); // the loading bar follows every API call
+  try {
+    const token = await getToken();
+    const headers = { ...options.headers };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && token) await supabase?.auth.signOut();
+    return res;
+  } finally {
+    endTask();
+  }
 }
 
 async function request(path, options = {}) {
-  const res = await authedFetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
+  const send = () =>
+    authedFetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options.headers },
+    });
+  let res;
+  try {
+    res = await send();
+  } catch (err) {
+    // A dropped connection ("Failed to fetch"): reads are safe to try once more.
+    if (options.method && options.method !== "GET") throw err;
+    await new Promise((r) => setTimeout(r, 400));
+    res = await send();
+  }
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
@@ -85,6 +101,7 @@ export const api = {
   getSemesters: () => request("/semesters"),
   getTimetable: () => request("/timetable"),
   getRuns: () => request("/runs"),
+  deleteRun: (id) => request(`/runs/${id}`, { method: "DELETE" }),
   generate: (engine = "engine_v2") =>
     request(`/timetable/generate?engine=${engine}&respect_locks=false`, {
       method: "POST",
@@ -114,6 +131,22 @@ export const api = {
   updateClass: (id, c) =>
     request(`/classes/${id}`, { method: "PATCH", body: JSON.stringify(c) }),
   getUnplaced: () => request("/timetable/unplaced"),
+  placeUnplaced: (sessionId, data) =>
+    request(`/timetable/unplaced/${sessionId}/place`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  unplaceEntry: (entryId) =>
+    request(`/timetable/entries/${entryId}/unplace`, { method: "POST" }),
+  getStatus: () => request("/timetable/status"),
+  publish: (force = false) =>
+    request("/timetable/publish", {
+      method: "POST",
+      body: JSON.stringify({ force }),
+    }),
+  unpublish: () => request("/timetable/unpublish", { method: "POST" }),
+  createSemester: (s) =>
+    request("/semesters", { method: "POST", body: JSON.stringify(s) }),
   autoPlaceAll: () =>
     request("/timetable/unplaced/auto-place", { method: "POST" }),
   updateEntry: (entryId, data) =>

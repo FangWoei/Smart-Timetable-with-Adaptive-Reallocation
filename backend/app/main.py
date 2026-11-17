@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from app.auth import current_user, guard, require_admin
 from app.deps import get_sb
 from app.lecturer_routes import router as lecturer_router
+from app.publish_routes import router as publish_router
+from app.unplaced_routes import router as unplaced_router, unplaced_cards, check_partial
 from db.calendar import (
     add_holiday, dated_timetable, delete_holiday, get_active_semester,
     list_holidays, list_semesters, save_semester, sync_holidays,
@@ -88,6 +90,9 @@ app.add_middleware(
 
 
 app.include_router(lecturer_router)
+app.include_router(unplaced_router)
+app.include_router(publish_router)
+
 
 # ---------- REQUEST SHAPES ----------
 class EntryIn(BaseModel):
@@ -153,7 +158,8 @@ def read_timetable(group: str | None = None, lecturer: str | None = None,
         entries = [e for e in entries if group in e["groups"]]
     if lecturer:
         entries = [e for e in entries if e["lecturer"] == lecturer]
-    return {"run": tt["run"], "entries": entries}
+    return {"run": tt["run"], "entries": entries,
+            "unplaced": unplaced_cards(sb, group, lecturer, tt=tt)}
 
 
 @app.get("/timetable/dated")
@@ -215,7 +221,7 @@ def generate(engine: Literal["engine", "engine_v2"] = "engine_v2",
 def check_timetable(req: CheckRequest, sb=Depends(get_sb)):
     """Check a full (possibly hand-edited) timetable for clashes and rule breaks."""
     data = load_input(sb)
-    problems = check(data, [e.model_dump() for e in req.entries])
+    problems = check_partial(data, [e.model_dump() for e in req.entries])
     return {"valid": not problems, "problems": problems}
 
 
@@ -242,8 +248,7 @@ async def import_commit(file: UploadFile = File(...), sb=Depends(get_sb)):
     seed(sb, {
         "rooms": {},                    # real rooms are managed on the Rooms page
         "groups": result["groups"],
-        "classes": [{k: v for k, v in c.items() if k != "part_time"}
-                    for c in result["classes"]],
+        "classes": result["classes"],
     })
     return {
         "groups": len(result["groups"]),
@@ -374,7 +379,7 @@ def move(entry_id: int, m: MoveIn, sb=Depends(get_sb)):
     } for e in tt["entries"]]
 
     data = load_input(sb)
-    problems = check(data, proposed)
+    problems = check_partial(data, proposed)
 
     if problems and not m.force:
         return {"saved": False, "valid": False, "problems": problems}
