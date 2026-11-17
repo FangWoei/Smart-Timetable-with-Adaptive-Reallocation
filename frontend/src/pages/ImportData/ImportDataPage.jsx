@@ -1,5 +1,5 @@
 // src/pages/ImportData/ImportDataPage.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
 import Tabs from "../../components/Tabs.jsx";
@@ -20,6 +20,69 @@ const MANUAL_CATEGORIES = [
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr'];
 const TIME_SLOTS = ['08-10', '10-12', '13-15', '15-17'];
+
+function SemesterDates() {
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [saved, setSaved] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.getSemesters().then((list) => {
+      const active = list.find((x) => x.is_active);
+      if (active) {
+        setStart(active.start_date);
+        setEnd(active.end_date);
+        setSaved(`Current semester: ${active.start_date} to ${active.end_date}`);
+      }
+    }).catch(() => {});
+  }, []);
+
+  async function save() {
+    setError("");
+    if (!start || !end) return setError("Choose both dates.");
+    if (end <= start) return setError("The end date must be after the start date.");
+    setBusy(true);
+    try {
+      await api.createSemester({ start_date: start, end_date: end });
+      setSaved(`Saved: ${start} to ${end}. Public holidays were added.`);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const input = "mt-1 h-[30px] rounded border border-line px-2 text-xs outline-none focus:border-navy-500";
+  return (
+    <div className="mt-4 rounded-md border border-line bg-white p-4">
+      <h2 className="text-[13px] font-semibold text-ink">Semester dates</h2>
+      <p className="mt-1 text-xs text-ink-3">
+        Used to turn the weekly timetable into real calendar dates and to mark holidays.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+          Start date
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={`block ${input}`} />
+        </label>
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
+          End date
+          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={`block ${input}`} />
+        </label>
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:opacity-50">
+          {busy ? "Saving…" : "Save dates"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {!error && saved && <p className="mt-2 text-xs text-green-700">{saved}</p>}
+    </div>
+  );
+}
 
 function BulkImport() {
   const [file, setFile] = useState(null);
@@ -63,6 +126,8 @@ function BulkImport() {
         Upload the Course Listing CSV. Student names in the file are ignored —
         only the head count per class is read.
       </p>
+
+      <SemesterDates />
 
       <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
         <label

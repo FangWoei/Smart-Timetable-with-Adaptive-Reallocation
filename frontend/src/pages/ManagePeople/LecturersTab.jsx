@@ -34,7 +34,7 @@ const SLOT_LABELS = Array.from({ length: 10 }, (_, i) => {
 });
 const cellKey = (day, slot) => `${day}-${slot}`;
 
-const EMPTY_NEW = { name: "", email: "", type: "full-time" };
+const EMPTY_NEW = { name: "", email: "", password: "", type: "full-time" };
 const inputCls =
   "mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500";
 const labelCls =
@@ -144,12 +144,17 @@ export default function LecturersTab() {
       setFormError("Enter the lecturer's full name.");
       return;
     }
+    if (newForm.email.trim() && newForm.password && newForm.password.length < 8) {
+      setFormError("The password needs at least 8 characters.");
+      return;
+    }
     setBusy(true);
     setFormError("");
     try {
       await api.addLecturer({
         name: newForm.name.trim(),
         email: newForm.email.trim() || null,
+        password: newForm.email.trim() && newForm.password ? newForm.password : undefined,
         is_part_time: newForm.type === "part-time",
       });
       await load();
@@ -409,6 +414,19 @@ export default function LecturersTab() {
           <p className="mt-1 text-[10px] text-ink-4">
             With an email, this lecturer is also allowed to sign in.
           </p>
+
+          {newForm.email.trim() && (
+            <label className={`mt-3 ${labelCls}`}>
+              First password (min. 8 characters)
+              <input
+                type="text"
+                value={newForm.password}
+                onChange={(e) => setNewForm({ ...newForm, password: e.target.value })}
+                placeholder="Give this to the lecturer"
+                className={inputCls}
+              />
+            </label>
+          )}
 
           <label className={`mt-3 ${labelCls}`}>
             Employment type

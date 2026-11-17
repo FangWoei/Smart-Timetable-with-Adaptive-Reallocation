@@ -113,6 +113,22 @@ export const api = {
   updateClass: (id, c) =>
     request(`/classes/${id}`, { method: "PATCH", body: JSON.stringify(c) }),
   getUnplaced: () => request("/timetable/unplaced"),
+  placeUnplaced: (sessionId, data) =>
+    request(`/timetable/unplaced/${sessionId}/place`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  unplaceEntry: (entryId) =>
+    request(`/timetable/entries/${entryId}/unplace`, { method: "POST" }),
+  getStatus: () => request("/timetable/status"),
+  publish: (force = false) =>
+    request("/timetable/publish", {
+      method: "POST",
+      body: JSON.stringify({ force }),
+    }),
+  unpublish: () => request("/timetable/unpublish", { method: "POST" }),
+  createSemester: (s) =>
+    request("/semesters", { method: "POST", body: JSON.stringify(s) }),
   autoPlaceAll: () =>
     request("/timetable/unplaced/auto-place", { method: "POST" }),
   updateEntry: (entryId, data) =>

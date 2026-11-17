@@ -1,19 +1,43 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../../api.js'
 
-const STATS = [
-  { label: 'Active intakes', value: '12', note: '28 groups scheduled', to: '/people', cta: 'Manage data' },
-  { label: 'Lecturers available', value: '47', note: '6 with restricted hours', to: '/people', cta: 'Manage data' },
-  { label: 'Room utilisation', value: '78%', note: 'across 19 classrooms', to: '/group-view', cta: 'Schedule' },
-  { label: 'Unresolved conflicts', value: '3', note: '2 room clashes, 1 retake', to: '/group-view', cta: 'Resolve in Schedule', danger: true },
-]
+const fmt = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function HomePage() {
+  const [d, setD] = useState({ semester: null, groups: null, lecturers: null, rooms: null, tt: null })
+
+  useEffect(() => {
+    const safe = (p) => p.catch(() => null)
+    Promise.all([
+      safe(api.getSemesters()), safe(api.getGroups()), safe(api.getLecturers()),
+      safe(api.getRooms()), safe(api.getTimetable()),
+    ]).then(([sems, groups, lecturers, rooms, tt]) =>
+      setD({ semester: (sems ?? []).find((x) => x.is_active) ?? null, groups, lecturers, rooms, tt }))
+  }, [])
+
+  const n = (v) => (v == null ? '–' : String(v))
+  const placed = d.tt?.entries?.length ?? null
+  const unplaced = d.tt?.unplaced?.length ?? null
+  const rooms = (d.rooms ?? []).filter((r) => !r.is_deleted)
+  const STATS = [
+    { label: 'Intake groups', value: n(d.groups?.length), note: 'imported from the course listing', to: '/import', cta: 'Import data' },
+    { label: 'Lecturers', value: n(d.lecturers?.length),
+      note: d.lecturers ? `${d.lecturers.filter((l) => l.is_part_time).length} part-time` : 'not loaded', to: '/people', cta: 'Manage lecturers' },
+    { label: 'Classrooms', value: n(d.rooms ? rooms.length : null),
+      note: d.rooms ? `${rooms.filter((r) => r.status && r.status !== 'available').length} unavailable` : 'not loaded', to: '/people', cta: 'Manage rooms' },
+    { label: 'Unplaced lessons', value: n(unplaced), note: placed == null ? 'no timetable yet' : `${placed} sessions placed`,
+      to: '/group-view', cta: 'Open Scheduler', danger: unplaced > 0 },
+  ]
+
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <section className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-8 py-12 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-xl">
-            <p className="text-xs text-ink-3">January 2026 semester · Week 5 of 14</p>
+            <p className="text-xs text-ink-3">
+              {d.semester ? `${d.semester.name} · ${fmt(d.semester.start_date)} to ${fmt(d.semester.end_date)}` : 'No semester dates yet. Set them on Import data.'}
+            </p>
             <h1 className="mt-3 text-4xl font-bold leading-tight text-navy-900">
               Build the semester in one sitting.
             </h1>
@@ -39,7 +63,7 @@ export default function HomePage() {
                 />
               ))}
             </div>
-            <p className="mt-3 text-xs text-ink-3">42 sessions placed · 3 left to resolve</p>
+            <p className="mt-3 text-xs text-ink-3">{placed == null ? "No timetable yet" : `${placed} sessions placed · ${unplaced ?? 0} left to place`}</p>
           </div>
         </div>
       </section>

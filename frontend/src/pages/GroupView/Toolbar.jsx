@@ -21,6 +21,7 @@ export default function Toolbar({
   onVerify,
   onApprove,
   canApprove,
+  isPublished = false,
   onToggleLock,
   selectedLocked = null, // null = 没选中课程；true/false = 选中课程的锁定状态
   onExportBatch,
@@ -113,13 +114,21 @@ export default function Toolbar({
             : `Download All PDFs (.zip) (${totalItemsCount})`}
         </button>
 
+        <span
+          className={[
+            'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+            isPublished ? 'bg-ok/15 text-ok' : 'bg-panel text-ink-3',
+          ].join(' ')}
+        >
+          {isPublished ? 'Published' : 'Draft'}
+        </span>
         <button
           type="button"
           onClick={onApprove}
           disabled={!canApprove}
           className="flex h-[30px] items-center rounded bg-ok px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Approve draft
+          {isPublished ? 'Unpublish' : 'Publish'}
         </button>
       </div>
     </div>

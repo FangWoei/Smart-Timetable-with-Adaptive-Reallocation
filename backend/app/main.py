@@ -221,7 +221,7 @@ def generate(engine: Literal["engine", "engine_v2"] = "engine_v2",
 def check_timetable(req: CheckRequest, sb=Depends(get_sb)):
     """Check a full (possibly hand-edited) timetable for clashes and rule breaks."""
     data = load_input(sb)
-    problems = check(data, [e.model_dump() for e in req.entries])
+    problems = check_partial(data, [e.model_dump() for e in req.entries])
     return {"valid": not problems, "problems": problems}
 
 
