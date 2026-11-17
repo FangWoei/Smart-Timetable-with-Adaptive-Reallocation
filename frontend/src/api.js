@@ -1,23 +1,39 @@
 import { getToken, supabase } from "./auth/supabase.js";
+import { startTask } from "./loading/progress.js";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 // Adds the login token to a request, and sends the user back to the login page
 // if the server says the session is no longer valid.
 async function authedFetch(url, options = {}) {
-  const token = await getToken();
-  const headers = { ...options.headers };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401 && token) await supabase?.auth.signOut();
-  return res;
+  const endTask = startTask(); // the loading bar follows every API call
+  try {
+    const token = await getToken();
+    const headers = { ...options.headers };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && token) await supabase?.auth.signOut();
+    return res;
+  } finally {
+    endTask();
+  }
 }
 
 async function request(path, options = {}) {
-  const res = await authedFetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
+  const send = () =>
+    authedFetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options.headers },
+    });
+  let res;
+  try {
+    res = await send();
+  } catch (err) {
+    // A dropped connection ("Failed to fetch"): reads are safe to try once more.
+    if (options.method && options.method !== "GET") throw err;
+    await new Promise((r) => setTimeout(r, 400));
+    res = await send();
+  }
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {

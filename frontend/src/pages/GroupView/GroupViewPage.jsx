@@ -65,6 +65,7 @@ export default function GroupViewPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedLessonData, setSelectedLessonData] = useState(null);
+  const [loaded, setLoaded] = useState(false); // false until the first load finishes
   const [status, setStatus] = useState(null); // GET /timetable/status: draft / published
 
   // 当前正在拖的东西：{ source: 'unplaced' | 'grid', lesson } 或 null
@@ -110,6 +111,8 @@ export default function GroupViewPage() {
     } catch (e) {
       setError(e.message);
       setGroups([]);
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -446,7 +449,7 @@ export default function GroupViewPage() {
         <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
           <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
             <h1 className="text-[15px] font-semibold text-ink">
-              {view === 'group' ? `${groups.length} groups` : view === 'lecturer' ? `${displayRows.length} lecturers` : `${displayRows.length} rooms`} · {sessions} sessions
+              {!loaded ? 'Loading timetable…' : view === 'group' ? `${groups.length} groups` : view === 'lecturer' ? `${displayRows.length} lecturers` : `${displayRows.length} rooms`} · {sessions} sessions
             </h1>
             {run && (
               <p className="text-xs text-ink-3">
