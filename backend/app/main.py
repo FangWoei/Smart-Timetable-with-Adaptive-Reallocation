@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.auth import current_user, guard, require_admin
 from app.deps import get_sb
 from app.lecturer_routes import router as lecturer_router
+from app.unplaced_routes import router as unplaced_router, unplaced_cards, check_partial
 from db.calendar import (
     add_holiday, dated_timetable, delete_holiday, get_active_semester,
     list_holidays, list_semesters, save_semester, sync_holidays,
@@ -88,6 +89,8 @@ app.add_middleware(
 
 
 app.include_router(lecturer_router)
+app.include_router(unplaced_router)
+
 
 # ---------- REQUEST SHAPES ----------
 class EntryIn(BaseModel):
@@ -153,7 +156,8 @@ def read_timetable(group: str | None = None, lecturer: str | None = None,
         entries = [e for e in entries if group in e["groups"]]
     if lecturer:
         entries = [e for e in entries if e["lecturer"] == lecturer]
-    return {"run": tt["run"], "entries": entries}
+    return {"run": tt["run"], "entries": entries,
+            "unplaced": unplaced_cards(sb, group, lecturer)}
 
 
 @app.get("/timetable/dated")
@@ -374,7 +378,7 @@ def move(entry_id: int, m: MoveIn, sb=Depends(get_sb)):
     } for e in tt["entries"]]
 
     data = load_input(sb)
-    problems = check(data, proposed)
+    problems = check_partial(data, proposed)
 
     if problems and not m.force:
         return {"saved": False, "valid": False, "problems": problems}
