@@ -132,10 +132,15 @@ function BulkImport() {
   }
 
   function pick(f) {
-    setFile(f ?? null);
     setPreview(null);
-    setError("");
     setDone("");
+    if (f && !/\.(csv|xlsx|xlsm)$/i.test(f.name)) {
+      setFile(null);
+      setError("Please choose a .csv or .xlsx file.");
+      return;
+    }
+    setFile(f ?? null);
+    setError("");
   }
 
   async function run(action) {
@@ -196,7 +201,7 @@ function BulkImport() {
           className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xlsm"
             className="sr-only"
             onChange={(e) => pick(e.target.files?.[0])}
           />
@@ -212,7 +217,9 @@ function BulkImport() {
               <span className="text-sm text-ink-2">
                 Drag a file here, or click to browse
               </span>
-              <span className="text-xs text-ink-4">.csv up to 2 MB</span>
+              <span className="text-xs text-ink-4">
+                .csv or .xlsx, up to 10 MB
+              </span>
               <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
                 Choose file
               </span>
