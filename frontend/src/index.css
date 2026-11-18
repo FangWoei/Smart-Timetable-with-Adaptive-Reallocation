@@ -33,6 +33,7 @@
 
   /* Surfaces and soft tints. Light values here; dark values further down. */
   --color-surface: #ffffff;
+  --color-heading: #0e3157;
   --color-ok-soft: #e4f1ea;
   --color-warn-soft: #fdf2df;
   --color-warn-ink: #8a6212;
@@ -87,7 +88,7 @@ body {
    data-theme="dark" on <html> (see src/theme.js). */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-navy-900: #7fb0e6;
+  --color-navy-900: #2c5f9a; /* dark blue: button hover with white text */
   --color-navy-800: #9cc3ee;
   --color-navy-700: #3f7cc0;
   --color-navy-600: #5b94d0;
@@ -108,6 +109,7 @@ body {
   --color-danger: #f0626f;
   --color-warn: #e8a33d;
   --color-surface: #151d2a;
+  --color-heading: #e6ebf2;
   --color-ok-soft: #12302a;
   --color-warn-soft: #36290f;
   --color-warn-ink: #f0c36d;
@@ -169,6 +171,7 @@ body {
   --color-danger: #c8102e;
   --color-warn: #e8a33d;
   --color-surface: #ffffff;
+  --color-heading: #0e3157;
   --color-ok-soft: #e4f1ea;
   --color-warn-soft: #fdf2df;
   --color-warn-ink: #8a6212;

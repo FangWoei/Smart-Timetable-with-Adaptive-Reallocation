@@ -87,7 +87,7 @@ export default function HomePage() {
                 ? `${d.semester.name} · ${fmt(d.semester.start_date)} to ${fmt(d.semester.end_date)}`
                 : "No semester dates yet. Set them on Import data."}
             </p>
-            <h1 className="mt-3 text-4xl font-bold leading-tight text-navy-900">
+            <h1 className="mt-3 text-4xl font-bold leading-tight text-heading">
               Build the semester in one sitting.
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-ink-3">
@@ -133,7 +133,7 @@ export default function HomePage() {
             className="flex flex-col rounded-md border border-line bg-surface p-4">
             <span className="text-xs text-ink-3">{s.label}</span>
             <span
-              className={`mt-1 text-3xl font-bold ${s.danger ? "text-danger" : "text-navy-900"}`}>
+              className={`mt-1 text-3xl font-bold ${s.danger ? "text-danger" : "text-heading"}`}>
               {s.value}
             </span>
             <span className="mt-1 text-xs text-ink-4">{s.note}</span>

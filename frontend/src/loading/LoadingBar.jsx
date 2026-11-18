@@ -93,7 +93,7 @@ export default function LoadingBar() {
           <div className="absolute inset-0 animate-[orbit_2.2s_linear_infinite_reverse] motion-reduce:animate-none">
             <span className="absolute left-1/2 top-[26%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy-200" />
           </div>
-          <span className="absolute inset-0 flex items-center justify-center text-xl font-bold tabular-nums text-navy-900">
+          <span className="absolute inset-0 flex items-center justify-center text-xl font-bold tabular-nums text-heading">
             {value}%
           </span>
         </div>

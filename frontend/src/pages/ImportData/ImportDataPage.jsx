@@ -614,7 +614,7 @@ function ManualImport() {
                           {g}
                           <button
                             onClick={() => removeGroupTag(g)}
-                            className="text-navy-500 hover:text-navy-900 font-bold">
+                            className="text-navy-500 hover:text-ink font-bold">
                             ×
                           </button>
                         </span>
@@ -639,7 +639,7 @@ function ManualImport() {
                           {lecturer}
                           <button
                             onClick={() => setLecturer("")}
-                            className="text-navy-500 hover:text-navy-900 font-bold">
+                            className="text-navy-500 hover:text-ink font-bold">
                             ×
                           </button>
                         </span>

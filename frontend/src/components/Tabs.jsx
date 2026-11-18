@@ -17,7 +17,7 @@ export default function Tabs({ tabs, value, onChange, label }) {
             className={[
               "h-[28px] px-4 rounded-md text-xs transition-colors flex items-center justify-center min-w-[90px]",
               active
-                ? "bg-tint text-navy-900 font-medium shadow-sm"
+                ? "bg-tint text-heading font-medium shadow-sm"
                 : "bg-panel text-ink-3 hover:bg-line-2 hover:text-ink font-medium",
             ].join(" ")}>
             {t.label}

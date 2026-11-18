@@ -43,7 +43,9 @@ const overlaps = (l, day, period, span) => {
 
 // 后端的一条 entry（还没排上时间的）变成 Unplaced 卡片
 const toUnplacedCard = (e) => {
-  const entryId = e.id ?? e.entry_id ?? null;
+  // The backend's unplaced cards have id = session id and entry_id = null.
+  // `id` is only an entry id for an old-style row that has no session_id.
+  const entryId = e.entry_id ?? (e.session_id == null ? (e.id ?? null) : null);
   const code = e.class_code ?? e.code ?? String(entryId ?? "");
   const needsLab = !!(e.needs_lab ?? e.needsLab);
   const sessionId = e.session_id != null ? String(e.session_id) : null;

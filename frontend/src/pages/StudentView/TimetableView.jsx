@@ -29,7 +29,7 @@ const SLOTS = TIME_SLOTS.length;
 const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
 
 const TONES = {
-  navy: ["bg-navy-50/40", "border-navy-200", "text-navy-900"],
+  navy: ["bg-navy-50/40", "border-navy-200", "text-heading"],
   amber: ["bg-amber-50/50", "border-amber-300", "text-amber-900"],
   emerald: ["bg-emerald-50/40", "border-emerald-200", "text-emerald-900"],
   purple: ["bg-purple-50/40", "border-purple-200", "text-purple-900"],
