@@ -41,7 +41,7 @@ function SemesterDates({ dates, setDates, onSave, busy, error, saved }) {
   const input =
     "mt-1 h-[30px] rounded border border-line px-2 text-xs outline-none focus:border-navy-500";
   return (
-    <div className="mt-4 rounded-md border border-line bg-white p-4">
+    <div className="mt-4 rounded-md border border-line bg-surface p-4">
       <h2 className="text-[13px] font-semibold text-ink">Semester dates</h2>
       <p className="mt-1 text-xs text-ink-3">
         Used to turn the weekly timetable into real calendar dates and to mark
@@ -165,7 +165,7 @@ function BulkImport() {
           message += ` The timetable could not be generated yet: ${e.message}`;
         }
         // then straight to the Scheduler: the loading screen ends when its data has arrived
-        navigate("/group-view", { state: { message } });
+        navigate("/group-view", { state: { message, showAll: true } });
       }
     } catch (e) {
       setError(e.message);
@@ -198,7 +198,7 @@ function BulkImport() {
             e.preventDefault();
             pick(e.dataTransfer.files?.[0]);
           }}
-          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-white text-center hover:border-navy-500">
+          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-surface text-center hover:border-navy-500">
           <input
             type="file"
             accept=".csv,.xlsx,.xlsm"
@@ -227,7 +227,7 @@ function BulkImport() {
           )}
         </label>
 
-        <aside className="rounded-md border border-line bg-white p-4 text-xs text-ink-2">
+        <aside className="rounded-md border border-line bg-surface p-4 text-xs text-ink-2">
           <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
           <ul className="mt-2 list-disc space-y-1.5 pl-4">
             <li>Intake group, level and head count</li>
@@ -261,7 +261,7 @@ function BulkImport() {
             {Object.keys(preview.groups).length} intake groups
           </h2>
 
-          <div className="overflow-x-auto rounded-md border border-line bg-white">
+          <div className="overflow-x-auto rounded-md border border-line bg-surface">
             <table className="w-full text-xs">
               <thead className="bg-panel text-left text-ink-2">
                 <tr>
@@ -316,7 +316,7 @@ function BulkImport() {
         <button
           type="button"
           onClick={() => pick(null)}
-          className="h-[30px] rounded border border-line-strong bg-white px-4 text-[13px] text-ink-2 hover:bg-panel">
+          className="h-[30px] rounded border border-line-strong bg-surface px-4 text-[13px] text-ink-2 hover:bg-panel">
           Discard
         </button>
         <button
@@ -478,7 +478,7 @@ function ManualImport() {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <aside className="flex w-[260px] shrink-0 flex-col border-r border-line bg-white">
+      <aside className="flex w-[260px] shrink-0 flex-col border-r border-line bg-surface">
         <ul className="min-h-0 flex-1 overflow-y-auto space-y-0.5">
           {MANUAL_CATEGORIES.map((cat) => {
             const active = cat.id === category;
@@ -515,7 +515,7 @@ function ManualImport() {
 
       <main className="min-w-0 flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-lg border border-line bg-white p-6 shadow-sm">
+          <div className="rounded-lg border border-line bg-surface p-6 shadow-sm">
             {category === "subject" && (
               <>
                 <h2 className="text-sm font-bold text-ink">
@@ -544,7 +544,7 @@ function ManualImport() {
                     <select
                       value={sessionType}
                       onChange={(e) => setSessionType(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                      className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Lecture + tutorial</option>
                       <option>Lecture only</option>
                       <option>Practical / Lab</option>
@@ -583,7 +583,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Room type
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="Standard room">Standard room</option>
                       <option value="Computer lab">Computer lab</option>
                       <option value="Lecture hall">Lecture hall</option>
@@ -593,7 +593,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Category
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Accounting</option>
                       <option>Business</option>
                       <option>Computing</option>
@@ -606,11 +606,11 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Groups taking this subject
                     </label>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded border border-line-strong bg-white p-1.5 min-h-[36px]">
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded border border-line-strong bg-surface p-1.5 min-h-[36px]">
                       {groups.map((g) => (
                         <span
                           key={g}
-                          className="inline-flex items-center gap-1 rounded bg-[#EBF1F6] px-2 py-0.5 text-xs font-medium text-navy-800">
+                          className="inline-flex items-center gap-1 rounded bg-tint px-2 py-0.5 text-xs font-medium text-navy-800">
                           {g}
                           <button
                             onClick={() => removeGroupTag(g)}
@@ -633,9 +633,9 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Lecturer (optional)
                     </label>
-                    <div className="mt-1 flex items-center rounded border border-line-strong bg-white p-1.5 min-h-[36px]">
+                    <div className="mt-1 flex items-center rounded border border-line-strong bg-surface p-1.5 min-h-[36px]">
                       {lecturer ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-[#EBF1F6] px-2 py-0.5 text-xs font-medium text-navy-800">
+                        <span className="inline-flex items-center gap-1 rounded bg-tint px-2 py-0.5 text-xs font-medium text-navy-800">
                           {lecturer}
                           <button
                             onClick={() => setLecturer("")}
@@ -679,7 +679,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Intake
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>January 2026</option>
                       <option>May 2026</option>
                     </select>
@@ -711,7 +711,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Programme
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Diploma in Business</option>
                       <option>Diploma in Accounting</option>
                     </select>
@@ -734,7 +734,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Year
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Year 1</option>
                       <option>Year 2</option>
                     </select>
@@ -743,7 +743,7 @@ function ManualImport() {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-3">
                       Intake month
                     </label>
-                    <select className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    <select className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option>Jan 2026</option>
                     </select>
                   </div>
@@ -792,7 +792,7 @@ function ManualImport() {
                   <select
                     value={lecturerType}
                     onChange={(e) => setLecturerType(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
                     <option value="Contract / Visiting">
@@ -828,7 +828,7 @@ function ManualImport() {
                             let textLabel = "avail";
                             if (status === "unavailable") {
                               bgClass =
-                                "bg-[#FBE2E6] text-danger font-medium border-red-300";
+                                "bg-danger-soft text-danger font-medium border-red-300";
                               textLabel = "off";
                             }
                             return (
@@ -891,7 +891,7 @@ function ManualImport() {
                   <select
                     value={roomType}
                     onChange={(e) => setRoomType(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option value="Standard room">Standard room</option>
                     <option value="Computer lab">Computer lab</option>
                     <option value="Lecture hall">Lecture hall</option>
@@ -943,7 +943,7 @@ function ManualImport() {
                     <select
                       value={customRoomType}
                       onChange={(e) => setCustomRoomType(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                      className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="Standard room">Standard room</option>
                       <option value="Computer lab">Computer lab</option>
                       <option value="Lecture hall">Lecture hall</option>
@@ -956,7 +956,7 @@ function ManualImport() {
                     <select
                       value={customRoomStatus}
                       onChange={(e) => setCustomRoomStatus(e.target.value)}
-                      className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                      className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                       <option value="available">Available (Normal)</option>
                       <option value="maintenance">Under Maintenance</option>
                       <option value="out_of_service">Out of Service</option>
@@ -1019,7 +1019,7 @@ function ManualImport() {
                   <select
                     value={studentGroup}
                     onChange={(e) => setStudentGroup(e.target.value)}
-                    className="mt-1 w-full rounded border border-line-strong bg-white px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
+                    className="mt-1 w-full rounded border border-line-strong bg-surface px-3 py-1.5 text-xs text-ink focus:border-navy-500 focus:outline-none">
                     <option>DB2601A</option>
                     <option>DB2601B</option>
                     <option>DB2602C</option>
@@ -1032,7 +1032,7 @@ function ManualImport() {
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
-              className="h-[30px] rounded border border-line-strong bg-white px-4 text-xs font-medium text-ink-2 hover:bg-panel">
+              className="h-[30px] rounded border border-line-strong bg-surface px-4 text-xs font-medium text-ink-2 hover:bg-panel">
               Cancel
             </button>
             <button
@@ -1049,7 +1049,7 @@ function ManualImport() {
                 <span>Added this session</span>
                 <span>Not saved anywhere else until you press Done</span>
               </div>
-              <div className="divide-y divide-line bg-white rounded-b-md border-x border-b border-line">
+              <div className="divide-y divide-line bg-surface rounded-b-md border-x border-b border-line">
                 {addedRecords.map((rec) => {
                   const isLecturer = rec.type === "Lecturer";
                   const isFullTime = rec.employmentType === "Full-time";
@@ -1107,7 +1107,7 @@ export default function ImportDataPage() {
 
   return (
     <div className="min-h-0 flex-1 overflow-auto flex flex-col">
-      <div className="border-b border-line bg-white px-6 pt-3 shrink-0">
+      <div className="border-b border-line bg-surface px-6 pt-3 shrink-0">
         <Tabs
           tabs={TABS}
           value={tab}

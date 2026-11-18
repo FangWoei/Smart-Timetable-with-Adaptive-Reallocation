@@ -12,6 +12,9 @@ import { exportGroupBatchZip } from "./exportGroupPdf.jsx";
 
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
+// The id of the "One timetable" card ("All groups" / "All lecturers" / "All rooms")
+const isCombinedId = (id) => /^All (groups|lecturers|rooms)$/.test(String(id));
+
 // 讲师 / 教室视图里课程代码带后缀："MAL1016 (GROUP)" / "MAL1016 · GROUP"，去掉后缀得到真正的课程代码
 const baseCode = (code) =>
   String(code ?? "")
@@ -60,22 +63,49 @@ const toUnplacedCard = (e) => {
 };
 
 export default function GroupViewPage() {
+  const location = useLocation();
   const [view, setView] = useState("group");
   const [groups, setGroups] = useState([]);
   const [unplacedLessons, setUnplacedLessons] = useState([]);
   const [run, setRun] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
+  // The page always opens on "Show all" (also after login and after an import)
+  const [selectedId, setSelectedId] = useState(ALL_ID);
   const [zoom, setZoom] = useState(100);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
   const [message, setMessage] = useState(location.state?.message ?? ""); // e.g. "Imported 22 classes"
   const [selectedLessonData, setSelectedLessonData] = useState(null);
+  // "Show all" can list every timetable one by one ("separate") or put every
+  // course in one timetable ("combined"). The choice is remembered.
+  const [allLayout, setAllLayoutState] = useState(() => {
+    try {
+      return localStorage.getItem("star.allLayout") === "combined"
+        ? "combined"
+        : "separate";
+    } catch {
+      return "separate";
+    }
+  });
+  const setAllLayout = (v) => {
+    setAllLayoutState(v);
+    try {
+      localStorage.setItem("star.allLayout", v);
+    } catch {
+      /* private window: just do not remember it */
+    }
+  };
   const [loaded, setLoaded] = useState(false); // false until the first load finishes
   const [status, setStatus] = useState(null); // GET /timetable/status: draft / published
 
   // 当前正在拖的东西：{ source: 'unplaced' | 'grid', lesson } 或 null
   const [drag, setDrag] = useState(null);
+  const [overZone, setOverZone] = useState(false); // dragged over the floating "unplace" box
+
+  // Undo / Redo. Each action remembers one lesson (by session id) and where it
+  // was before / after: null = unplaced, or { day, start_slot, room }.
+  const [history, setHistory] = useState({ undo: [], redo: [] });
+  const groupsRef = useRef([]);
+  const stepRef = useRef(null);
 
   const [exportState, setExportState] = useState(null);
   const isExporting = exportState !== null;
@@ -150,6 +180,95 @@ export default function GroupViewPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
+
+  const record = (action) => {
+    if (action.sessionId == null) return;
+    setHistory((h) => ({
+      undo: [...h.undo, action].slice(-50),
+      redo: [],
+    }));
+  };
+  const clearHistory = () => setHistory({ undo: [], redo: [] });
+
+  const stateOf = (l) => ({
+    day: l.day + 1,
+    start_slot: l.period,
+    room: l.room,
+  });
+  const whereText = (st) =>
+    st
+      ? `${DAY_SHORT[st.day - 1]} ${periodTime(st.start_slot)} ${st.room}`
+      : "Unplaced";
+
+  // Put one lesson into a state: null = take it off, otherwise move / place it.
+  // force = true: going back to an earlier state should not be refused.
+  async function applyState(sessionId, state) {
+    const cur = groupsRef.current
+      .flatMap((g) => g.lessons)
+      .find((l) => String(l.sessionId) === String(sessionId));
+    if (state == null) {
+      if (cur) await api.unplaceEntry(cur.entryId);
+      return;
+    }
+    const body = { ...state, force: true };
+    if (cur) await api.updateEntry(cur.entryId, body);
+    else await api.placeUnplaced(sessionId, body);
+  }
+
+  async function step(kind) {
+    const list = kind === "undo" ? history.undo : history.redo;
+    const a = list[list.length - 1];
+    if (!a || busy) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await applyState(a.sessionId, kind === "undo" ? a.before : a.after);
+      setHistory((h) =>
+        kind === "undo"
+          ? { undo: h.undo.slice(0, -1), redo: [...h.redo, a] }
+          : { undo: [...h.undo, a], redo: h.redo.slice(0, -1) },
+      );
+      setSelectedLessonData(null);
+      await load();
+      setMessage(`${kind === "undo" ? "Undid" : "Redid"}: ${a.label}`);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    stepRef.current = step;
+  });
+
+  // Ctrl+Z = undo, Ctrl+Y or Ctrl+Shift+Z = redo (not while typing in a box)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const t = e.target;
+      if (
+        t &&
+        (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)
+      )
+        return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) {
+        e.preventDefault();
+        void stepRef.current?.("undo");
+      } else if (k === "y" || (k === "z" && e.shiftKey)) {
+        e.preventDefault();
+        void stepRef.current?.("redo");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // 2. 选一间当时空闲的教室（需要实验室的课只选名字带 lab 的）
   const pickRoom = ({ day, period, span, needsLab, selfEntryId }) => {
     const all = new Set(roomPoolRef.current);
@@ -205,7 +324,8 @@ export default function GroupViewPage() {
       source === "unplaced" &&
       view === "group" &&
       lesson.group &&
-      lesson.group !== entityId
+      lesson.group !== entityId &&
+      !isCombinedId(entityId)
     ) {
       if (
         !window.confirm(
@@ -218,7 +338,10 @@ export default function GroupViewPage() {
     // 决定教室
     let room;
     if (source === "grid") {
-      room = view === "room" ? realRoom(entityId) : realRoom(lesson.room); // 教室视图里拖到另一个教室 = 换教室
+      room =
+        view === "room" && !isCombinedId(entityId)
+          ? realRoom(entityId)
+          : realRoom(lesson.room); // 教室视图里拖到另一个教室 = 换教室
     }
     if (!room) {
       room = pickRoom({
@@ -256,6 +379,12 @@ export default function GroupViewPage() {
         }
         await send(true);
       }
+      record({
+        sessionId: lesson.sessionId,
+        label: `${name} (${source === "grid" ? whereText(stateOf(lesson)) : "Unplaced"} → ${whereText(body)})`,
+        before: source === "grid" ? stateOf(lesson) : null,
+        after: body,
+      });
       setSelectedLessonData(null);
       await load();
       setMessage(
@@ -268,11 +397,50 @@ export default function GroupViewPage() {
     }
   };
 
+  // 把时间表里的一节课拖回 Unplaced lessons
+  async function handleUnplace(lesson) {
+    if (busy || !lesson) return;
+    setError("");
+    setMessage("");
+    const name = lesson.name || lesson.module || baseCode(lesson.code);
+    if (lesson.locked) {
+      setError(`"${name}" is locked. Click it, then press Unlock.`);
+      return;
+    }
+    if (lesson.entryId == null) return;
+    setBusy(true);
+    try {
+      await api.unplaceEntry(lesson.entryId);
+      record({
+        sessionId: lesson.sessionId,
+        label: `${name} (${whereText(stateOf(lesson))} → Unplaced)`,
+        before: stateOf(lesson),
+        after: null,
+      });
+      setSelectedLessonData(null);
+      await load();
+      setMessage(`"${name}" is back in Unplaced lessons.`);
+    } catch (e) {
+      setError(e.message || "Could not take the lesson off the timetable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // 拖拽对象：交给 TimetableGrid（高亮 / 变红 / 放下）和 BottomPanels（开始拖）
   const dnd = {
     drag,
     onDragStart: setDrag,
-    onDragEnd: () => setDrag(null),
+    onDragEnd: () => {
+      setDrag(null);
+      setOverZone(false);
+    },
+    onDropUnplace: () => {
+      const d = drag;
+      setDrag(null);
+      setOverZone(false);
+      if (d?.source === "grid") void handleUnplace(d.lesson);
+    },
     onDrop: ({ day, start, entityId }) => {
       const d = drag;
       setDrag(null);
@@ -314,6 +482,7 @@ export default function GroupViewPage() {
     setMessage("");
     try {
       const r = await api.generate();
+      clearHistory(); // the old plan is gone, so its undo steps no longer apply
       setMessage(
         `Run #${r.run_id} · ${r.status} · penalty ${r.penalty} · ${r.seconds}s`,
       );
@@ -360,6 +529,7 @@ export default function GroupViewPage() {
     setMessage("");
     try {
       const r = await api.deleteRun(id);
+      clearHistory();
       setMessage(
         r.active_run_id != null
           ? `Plan #${id} deleted. Showing plan #${r.active_run_id}.`
@@ -477,9 +647,37 @@ export default function GroupViewPage() {
 
   // 当前选中的项：选的那项不在列表里时（例如切换了视图），退回第一项
   const activeId =
-    selectedId === ALL_ID || displayRows.some((r) => r.id === selectedId)
+    (selectedId === ALL_ID && displayRows.length > 1) ||
+    displayRows.some((r) => r.id === selectedId)
       ? selectedId
       : (displayRows[0]?.id ?? null);
+
+  // Every course in ONE timetable (a course shared by several groups appears once)
+  const combinedRow = (() => {
+    const seen = new Set();
+    const lessons = [];
+    for (const r of displayRows) {
+      for (const l of r.lessons || []) {
+        const key = l.entryId ?? `${l.code}|${l.day}|${l.period}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // group view: add the groups to the course code, like the lecturer / room views do
+        lessons.push(
+          view === "group" && l.groups?.length
+            ? { ...l, code: `${l.code || l.name} (${l.groups.join(", ")})` }
+            : l,
+        );
+      }
+    }
+    const noun =
+      view === "lecturer" ? "lecturers" : view === "room" ? "rooms" : "groups";
+    return {
+      id: `All ${noun}`,
+      title: `${displayRows.length} ${noun} · every course in one timetable`,
+      lessons,
+      freeSlots: [],
+    };
+  })();
 
   const exportTargets = useMemo(
     () => displayRows.filter((r) => r.lessons && r.lessons.length > 0),
@@ -536,7 +734,9 @@ export default function GroupViewPage() {
   const totalLessonsCount = placedIds.size + unplacedLessons.length;
 
   const selectedGroup = selectedLessonData
-    ? displayRows.find((g) => g.id === selectedLessonData.groupId)
+    ? selectedLessonData.groupId === combinedRow.id
+      ? combinedRow
+      : displayRows.find((g) => g.id === selectedLessonData.groupId)
     : null;
 
   return (
@@ -549,6 +749,10 @@ export default function GroupViewPage() {
         }}
         onGenerate={handleGenerate}
         onVerify={handleVerify}
+        onUndo={() => step("undo")}
+        onRedo={() => step("redo")}
+        undoLabel={history.undo.at(-1)?.label ?? null}
+        redoLabel={history.redo.at(-1)?.label ?? null}
         onToggleLock={handleToggleLock}
         selectedLocked={
           selectedLessonData ? !!selectedLessonData.lesson.locked : null
@@ -598,24 +802,56 @@ export default function GroupViewPage() {
               <p className="text-xs font-medium text-danger">{error}</p>
             )}
 
-            <div className="ml-auto flex items-center rounded border border-line bg-white text-[13px] text-ink-2">
-              <button
-                type="button"
-                aria-label="Zoom out"
-                onClick={() => setZoom((z) => Math.max(70, z - 10))}
-                className="px-2.5 py-0.5 hover:bg-panel">
-                −
-              </button>
-              <span className="w-11 text-center text-[11px] text-ink-3">
-                {zoom}%
-              </span>
-              <button
-                type="button"
-                aria-label="Zoom in"
-                onClick={() => setZoom((z) => Math.min(160, z + 10))}
-                className="px-2.5 py-0.5 hover:bg-panel">
-                +
-              </button>
+            <div className="ml-auto flex items-center gap-3">
+              {activeId === ALL_ID && (
+                <div
+                  role="group"
+                  aria-label="Show all layout"
+                  className="flex rounded bg-panel p-0.5 text-[12px]">
+                  {[
+                    ["separate", "Separate"],
+                    ["combined", "One timetable"],
+                  ].map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setAllLayout(v)}
+                      aria-pressed={allLayout === v}
+                      title={
+                        v === "separate"
+                          ? "One timetable for each group"
+                          : "Every course together in one timetable"
+                      }
+                      className={[
+                        "rounded px-2.5 py-1 font-medium",
+                        allLayout === v
+                          ? "bg-surface text-navy-700 shadow-xs"
+                          : "text-ink-3 hover:text-ink",
+                      ].join(" ")}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center rounded border border-line bg-surface text-[13px] text-ink-2">
+                <button
+                  type="button"
+                  aria-label="Zoom out"
+                  onClick={() => setZoom((z) => Math.max(70, z - 10))}
+                  className="px-2.5 py-0.5 hover:bg-panel">
+                  −
+                </button>
+                <span className="w-11 text-center text-[11px] text-ink-3">
+                  {zoom}%
+                </span>
+                <button
+                  type="button"
+                  aria-label="Zoom in"
+                  onClick={() => setZoom((z) => Math.min(160, z + 10))}
+                  className="px-2.5 py-0.5 hover:bg-panel">
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -626,7 +862,18 @@ export default function GroupViewPage() {
               </p>
             ) : (
               <>
-                {activeId === ALL_ID ? (
+                {activeId === ALL_ID && allLayout === "combined" ? (
+                  <TimetableGrid
+                    groups={[combinedRow]}
+                    selectedId={combinedRow.id}
+                    onSelect={() => {}}
+                    zoom={zoom}
+                    selectedLesson={selectedLessonData}
+                    onLessonSelect={setSelectedLessonData}
+                    dnd={dnd}
+                    view={view}
+                  />
+                ) : activeId === ALL_ID ? (
                   <div className="space-y-6">
                     {displayRows.map((g) => (
                       <TimetableGrid
@@ -659,6 +906,8 @@ export default function GroupViewPage() {
                   onAutoPlaceAll={handleAutoPlaceAll}
                   onLessonDragStart={dnd.onDragStart}
                   onLessonDragEnd={dnd.onDragEnd}
+                  canUnplace={drag?.source === "grid"}
+                  onDropUnplace={dnd.onDropUnplace}
                 />
               </>
             )}
@@ -674,7 +923,30 @@ export default function GroupViewPage() {
         )}
       </div>
 
-      <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-[#E8EDF4] px-4 text-[11px] text-ink-3 z-20">
+      {/* Shown only while a lesson from the timetable is being dragged, so you
+          do not have to scroll down to the Unplaced lessons box. */}
+      {drag?.source === "grid" && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (!overZone) setOverZone(true);
+          }}
+          onDragLeave={() => setOverZone(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            dnd.onDropUnplace();
+          }}
+          className={`absolute left-1/2 top-[60px] z-30 -translate-x-1/2 rounded-lg border-2 border-dashed px-6 py-2 text-[13px] font-semibold shadow-lg ${
+            overZone
+              ? "border-navy-500 bg-navy-700 text-white"
+              : "border-navy-500 bg-surface text-navy-700"
+          }`}>
+          Drop here to put it back in Unplaced lessons
+        </div>
+      )}
+
+      <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-footer px-4 text-[11px] text-ink-3 z-20">
         <div className="flex items-center gap-4">
           <span className="text-ink">
             {placedLessonsCount} of {totalLessonsCount} lessons placed

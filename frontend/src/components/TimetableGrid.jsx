@@ -71,7 +71,7 @@ function courseColors(lesson) {
   const colors = {
     bg: `hsl(${hue} 75% 96%)`,
     border: `hsl(${hue} 55% 62%)`,
-    text: `hsl(${hue} 65% 22%)`,
+    text: `hsl(${hue} 65% var(--lesson-text-l))`,
   };
   colorCache.set(key, colors);
   return colors;
@@ -162,7 +162,7 @@ function ExportLessonCard({ lesson, colors, span, view }) {
         height: EXPORT_CARD_H,
         borderColor: conflict ? undefined : colors.border,
       }}
-      className={`flex w-full flex-col justify-center gap-[3px] overflow-hidden rounded border bg-white px-1.5 ${
+      className={`flex w-full flex-col justify-center gap-[3px] overflow-hidden rounded border bg-surface px-1.5 ${
         conflict
           ? "border-red-300 outline outline-2 -outline-offset-2 outline-danger"
           : ""
@@ -218,16 +218,24 @@ function LessonCard({
 }) {
   const { conflict, startDate, endDate, locked } = lesson;
 
+  // A div, not a <button>: Firefox does not start a drag from a button.
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       style={conflict ? undefined : { borderColor: colors.border }}
       className={[
-        "block w-full space-y-1 overflow-hidden rounded border bg-white p-1.5 text-left shadow-xs transition-shadow hover:shadow-sm",
+        "block w-full space-y-1 overflow-hidden rounded border bg-surface p-1.5 text-left shadow-xs transition-shadow hover:shadow-sm",
         draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         conflict
           ? "border-red-300 outline outline-2 -outline-offset-2 outline-danger"
@@ -273,7 +281,7 @@ function LessonCard({
           {lesson.room || "No Room"}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -346,12 +354,12 @@ export default function TimetableGrid({
   };
 
   return (
-    <div className={exportMode ? "space-y-2 bg-white" : "space-y-3"}>
+    <div className={exportMode ? "space-y-2 bg-surface" : "space-y-3"}>
       <div
         className={
           exportMode
             ? "px-1"
-            : "rounded-lg border border-line bg-white px-3 py-2.5 shadow-xs"
+            : "rounded-lg border border-line bg-surface px-3 py-2.5 shadow-xs"
         }>
         <h2
           className={`font-bold text-ink ${exportMode ? "text-xl" : "text-base"}`}>
@@ -364,9 +372,9 @@ export default function TimetableGrid({
       </div>
 
       <div
-        className={`overflow-hidden rounded-lg border bg-white ${exportMode ? "border-slate-300" : "border-line shadow-xs"}`}>
+        className={`overflow-hidden rounded-lg border bg-surface ${exportMode ? "border-line-strong" : "border-line shadow-xs"}`}>
         <div
-          className={`grid grid-cols-2 border-b border-line text-ink-3 ${exportMode ? "bg-slate-100 px-4 py-2.5 text-[11px]" : "bg-panel px-3 py-2 text-[10px]"}`}>
+          className={`grid grid-cols-2 border-b border-line text-ink-3 ${exportMode ? "bg-panel px-4 py-2.5 text-[11px]" : "bg-panel px-3 py-2 text-[10px]"}`}>
           <div>
             <span className="font-semibold text-ink">TIMETABLE:</span>{" "}
             {entity.id}
@@ -401,18 +409,17 @@ export default function TimetableGrid({
             </colgroup>
             <thead>
               <tr
-                className={`border-b border-line font-semibold text-ink-3 ${exportMode ? "bg-slate-100" : "bg-panel"}`}>
+                className={`border-b border-line font-semibold text-ink-3 ${exportMode ? "bg-panel" : "bg-panel"}`}>
+                <th className="sticky left-0 z-10 border-r border-line bg-panel p-1.5 text-left">
+                  DAY / TIME
+                </th>
                 {!exportMode && (
                   <th
-                    className={`border-r border-line p-1.5 text-left ${exportMode ? "bg-slate-100" : "sticky left-0 z-10 bg-panel"}`}>
+                    className="sticky z-10 border-r border-line bg-panel p-1.5 text-left"
+                    style={{ left: DAY_COL_W }}>
                     HOLIDAYS
                   </th>
                 )}
-                <th
-                  className="sticky z-10 border-r border-line bg-panel p-1.5 text-left"
-                  style={{ left: DAY_COL_W }}>
-                  DAY / TIME
-                </th>
                 {TIME_SLOTS.map((slot) => {
                   const [from, to] = slot.split("–");
                   return (
@@ -516,7 +523,7 @@ export default function TimetableGrid({
                       <td
                         key={`l-${start}`}
                         colSpan={span}
-                        className={`border-r border-line bg-white p-1 ${exportMode ? "align-middle" : "align-top"}`}>
+                        className={`border-r border-line bg-surface p-1 ${exportMode ? "align-middle" : "align-top"}`}>
                         {exportMode ? (
                           <ExportLessonCard
                             lesson={lesson}
@@ -557,14 +564,14 @@ export default function TimetableGrid({
                       {laneIdx === 0 && (
                         <td
                           rowSpan={lanes.length}
-                          className={`border-r border-line bg-white p-1.5 text-[10px] font-bold text-ink ${exportMode ? "" : "sticky left-0 z-10"}`}>
+                          className={`border-r border-line bg-surface p-1.5 text-[10px] font-bold text-ink ${exportMode ? "" : "sticky left-0 z-10"}`}>
                           {dayName}
                         </td>
                       )}
                       {laneIdx === 0 && !exportMode && (
                         <td
                           rowSpan={lanes.length}
-                          className="sticky z-10 border-r border-line bg-white p-1.5 align-top"
+                          className="sticky z-10 border-r border-line bg-surface p-1.5 align-top"
                           style={{ left: DAY_COL_W }}>
                           {holidaysByDay[dayIdx].length === 0 ? (
                             <span className="text-[9px] text-ink-4">–</span>
