@@ -1,5 +1,7 @@
-// Counts the things the app is waiting for (API calls, page changes) so the
-// LoadingBar can show how far along it is. No React in here.
+import { useEffect } from "react";
+
+// Counts the things the app is waiting for (backend calls) so the LoadingBar
+// can show how far along it is. api.js counts every call automatically.
 let snapshot = { active: 0, total: 0, done: 0 };
 const listeners = new Set();
 
@@ -32,10 +34,16 @@ export function startTask() {
   };
 }
 
-/** For page changes: show the bar briefly even when the new page loads nothing. */
-export function pulse(ms = 250) {
-  const end = startTask();
-  setTimeout(end, ms);
+/**
+ * For a useEffect that loads something NOT through api.js:
+ *   useEffect(() => { const end = startTask(); load().finally(end); }, []);
+ * or simply keep the loading on while a flag is true:  useLoadingWhile(busy)
+ */
+export function useLoadingWhile(on) {
+  useEffect(() => {
+    if (!on) return undefined;
+    return startTask();
+  }, [on]);
 }
 
 /** Wrap any promise so the bar follows it. */
