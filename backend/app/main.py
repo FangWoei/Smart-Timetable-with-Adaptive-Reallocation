@@ -134,9 +134,12 @@ async def _parse_upload(file: UploadFile):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(422, f"Could not read this CSV: {e}")
+        raise HTTPException(422, f"Could not read this file: {e}")
     finally:
-        path.unlink(missing_ok=True)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass                        # a leftover temp file must never turn a good import into an error
 
 
 # ---------- TIMETABLE ----------

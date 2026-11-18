@@ -11,7 +11,7 @@ export default function Logo({ src = '/peninsula-logo.png', alt = 'Institution l
   return (
     <div
       className={[
-        'flex h-[30px] w-[152px] shrink-0 items-center justify-center rounded bg-white px-2',
+        'flex h-[30px] w-[152px] shrink-0 items-center justify-center rounded px-2',
         bordered ? 'border border-line' : '',
       ].join(' ')}
     >

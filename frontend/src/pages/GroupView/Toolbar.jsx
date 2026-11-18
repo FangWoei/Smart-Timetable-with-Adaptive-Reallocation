@@ -8,7 +8,7 @@ const VIEWS = [
 const ghost =
   "flex h-[30px] items-center gap-1.5 rounded bg-panel px-3 text-xs text-ink-2 hover:bg-line-2 disabled:opacity-40";
 const outline =
-  "flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-white px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-surface px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
 
 function Divider() {
   return <span className="mx-1 h-7 w-px bg-line" aria-hidden />;
@@ -24,6 +24,10 @@ export default function Toolbar({
   isPublished = false,
   onDeletePlan,
   canDeletePlan = false,
+  onUndo,
+  onRedo,
+  undoLabel = null, // text of the action Undo would reverse (null = nothing to undo)
+  redoLabel = null,
   onToggleLock,
   selectedLocked = null, // null = 没选中课程；true/false = 选中课程的锁定状态
   onExportBatch,
@@ -32,7 +36,7 @@ export default function Toolbar({
   totalItemsCount = 0,
 }) {
   return (
-    <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-white px-3">
+    <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-surface px-3">
       <button
         type="button"
         onClick={onGenerate}
@@ -58,7 +62,14 @@ export default function Toolbar({
 
       <Divider />
 
-      <button type="button" className={ghost}>
+      <button
+        type="button"
+        onClick={onUndo}
+        disabled={undoLabel == null}
+        title={
+          undoLabel == null ? "Nothing to undo" : `Undo: ${undoLabel} (Ctrl+Z)`
+        }
+        className={ghost}>
         <svg
           width="14"
           height="14"
@@ -74,7 +85,14 @@ export default function Toolbar({
         </svg>
         Undo
       </button>
-      <button type="button" className={ghost}>
+      <button
+        type="button"
+        onClick={onRedo}
+        disabled={redoLabel == null}
+        title={
+          redoLabel == null ? "Nothing to redo" : `Redo: ${redoLabel} (Ctrl+Y)`
+        }
+        className={ghost}>
         Redo
         <svg
           width="14"
@@ -141,7 +159,7 @@ export default function Toolbar({
               className={[
                 "h-[26px] w-[98px] rounded-[3px] text-[13px] transition-colors disabled:cursor-not-allowed",
                 active
-                  ? "border border-line-strong bg-white font-semibold text-navy-700"
+                  ? "border border-line-strong bg-surface font-semibold text-navy-700"
                   : "border border-transparent text-ink-3 hover:text-ink",
               ].join(" ")}>
               {v.label}
@@ -167,7 +185,7 @@ export default function Toolbar({
           onClick={onDeletePlan}
           disabled={!canDeletePlan}
           title="Delete this plan"
-          className="inline-flex h-[30px] items-center gap-1.5 rounded border border-danger/40 bg-white px-3 text-[13px] font-medium text-danger hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-40">
+          className="inline-flex h-[30px] items-center gap-1.5 rounded border border-danger/40 bg-surface px-3 text-[13px] font-medium text-danger hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-40">
           Delete plan
         </button>
         <span

@@ -1,8 +1,6 @@
-import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import LoadingBar from "../loading/LoadingBar.jsx";
-import { pulse } from "../loading/progress.js";
 import { useAuth } from "../auth/useAuth.js";
+import LoadingBar from "../loading/LoadingBar.jsx";
 import TopBar from "./TopBar.jsx";
 
 function describe(user) {
@@ -20,10 +18,8 @@ export default function AppShell() {
   const { pathname } = useLocation();
   const isHome = pathname === "/";
   const { user, signOut, authEnabled } = useAuth();
-  // Clicking to another page: show the bar even if the new page loads nothing
-  useEffect(() => {
-    pulse();
-  }, [pathname]);
+  // No loading on page change. The loading screen only shows while the app is
+  // really waiting for the backend (every api.js call is counted automatically).
 
   return (
     <div className="flex h-full flex-col bg-canvas">

@@ -4,6 +4,9 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { AuthProvider } from "./auth/AuthProvider.jsx";
 import "./index.css";
+import { initTheme } from "./theme.js";
+
+initTheme(); // set light / dark before the first paint
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

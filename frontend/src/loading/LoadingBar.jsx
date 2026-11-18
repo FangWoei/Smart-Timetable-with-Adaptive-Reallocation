@@ -54,14 +54,14 @@ export default function LoadingBar() {
   const value = Math.round(pct);
   return (
     <div
-      className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-white/60 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex cursor-wait items-center justify-center bg-canvas/60 backdrop-blur-[2px]"
       role="progressbar"
       aria-label="Loading"
       aria-busy="true"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}>
-      <div className="flex flex-col items-center gap-4 rounded-2xl bg-white px-10 py-8 shadow-xl ring-1 ring-line">
+      <div className="flex flex-col items-center gap-4 rounded-2xl bg-surface px-10 py-8 shadow-xl ring-1 ring-line">
         <div className="relative h-28 w-28">
           <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
             <circle
@@ -93,7 +93,7 @@ export default function LoadingBar() {
           <div className="absolute inset-0 animate-[orbit_2.2s_linear_infinite_reverse] motion-reduce:animate-none">
             <span className="absolute left-1/2 top-[26%] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy-200" />
           </div>
-          <span className="absolute inset-0 flex items-center justify-center text-xl font-bold tabular-nums text-navy-900">
+          <span className="absolute inset-0 flex items-center justify-center text-xl font-bold tabular-nums text-heading">
             {value}%
           </span>
         </div>
