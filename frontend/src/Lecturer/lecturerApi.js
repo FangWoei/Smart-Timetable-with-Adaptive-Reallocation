@@ -59,7 +59,13 @@ const ENTRIES = [
 ];
 let blocked = [[1, 9], [1, 10], [2, 9], [2, 10], [5, 5], [5, 6], [5, 7], [5, 8], [5, 9], [5, 10]];
 const later = (v) => new Promise((r) => setTimeout(() => r(structuredClone(v)), 200));
-const avail = () => ({ lecturer_id: 1, name: NAME, is_part_time: true, unavailable: blocked });
+let partTime = true;
+const avail = () => ({
+  lecturer_id: 1,
+  name: NAME,
+  is_part_time: partTime,
+  unavailable: partTime ? blocked : [],
+});
 
 const mockApi = {
   myTimetable: () => later({ lecturer: NAME, run: 1, entries: ENTRIES }),
@@ -68,7 +74,7 @@ const mockApi = {
       lecturer: NAME,
       per_day: { 1: 4, 2: 2, 3: 4, 4: 2, 5: 0 },
       per_week: 12,
-      per_month: {},
+      per_month: { "2027-01": 40, "2027-02": 36, "2027-03": 44, "2027-04": 28 },
       semester_total: 168,
     }),
   myAvailability: () => later(avail()),
@@ -80,4 +86,8 @@ const mockApi = {
 
 export const PREVIEW_SEMESTER = { start_date: "2027-01-04", end_date: "2027-04-23", is_active: true };
 export const PREVIEW_EMAIL = "lim.ck@peninsulamalaysia.edu.my";
-export const makeLecturerApi = (preview) => (preview ? mockApi : realApi);
+export function makeLecturerApi(preview, isPartTime = true) {
+  if (!preview) return realApi;
+  partTime = isPartTime; // 预览时可以切换 Part-time / Full-time
+  return mockApi;
+}
