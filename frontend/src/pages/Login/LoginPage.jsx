@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth.js";
 import Logo from "../../components/Logo.jsx";
+import ThemeToggle from "../../components/ThemeToggle.jsx";
 
 // Simple on purpose: layout and wiring only. Styling is for the design pass.
 export default function LoginPage() {
@@ -30,10 +31,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center bg-canvas p-6">
+    <div className="relative flex h-full items-center justify-center bg-canvas p-6">
+      <ThemeToggle className="absolute right-4 top-4" />
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded border border-line bg-white p-8 shadow-xs">
+        className="w-full max-w-sm rounded border border-line bg-surface p-8 shadow-xs">
         <div className="mb-6 flex justify-center">
           <Logo />
         </div>

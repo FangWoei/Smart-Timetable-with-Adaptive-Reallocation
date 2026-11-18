@@ -48,7 +48,7 @@ export default function GeneratePage() {
       <div>
         <h3 className="mb-2 font-semibold">Past runs</h3>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white text-sm">
+          <table className="w-full border-collapse bg-surface text-sm">
             <thead>
               <tr className="text-left">
                 {[
@@ -60,7 +60,7 @@ export default function GeneratePage() {
                   "Active",
                   "Created",
                 ].map((h) => (
-                  <th key={h} className="border border-gray-200 p-2">
+                  <th key={h} className="border border-line p-2">
                     {h}
                   </th>
                 ))}
@@ -69,17 +69,15 @@ export default function GeneratePage() {
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id}>
-                  <td className="border border-gray-200 p-2">#{r.id}</td>
-                  <td className="border border-gray-200 p-2">{r.engine}</td>
-                  <td className="border border-gray-200 p-2">{r.status}</td>
-                  <td className="border border-gray-200 p-2">{r.penalty}</td>
-                  <td className="border border-gray-200 p-2">
-                    {r.solve_seconds}
-                  </td>
-                  <td className="border border-gray-200 p-2">
+                  <td className="border border-line p-2">#{r.id}</td>
+                  <td className="border border-line p-2">{r.engine}</td>
+                  <td className="border border-line p-2">{r.status}</td>
+                  <td className="border border-line p-2">{r.penalty}</td>
+                  <td className="border border-line p-2">{r.solve_seconds}</td>
+                  <td className="border border-line p-2">
                     {r.is_active ? "✅" : ""}
                   </td>
-                  <td className="border border-gray-200 p-2">
+                  <td className="border border-line p-2">
                     {new Date(r.created_at).toLocaleString()}
                   </td>
                 </tr>

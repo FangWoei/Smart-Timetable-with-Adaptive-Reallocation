@@ -1,6 +1,7 @@
 // src/layouts/TopBar.jsx
 import { NavLink } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import { NAV_ITEMS } from "../nav.js";
 
 const MENUS = [
@@ -21,7 +22,7 @@ export default function TopBar({
   onSignOut,
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center border-b border-line bg-white px-5 shadow-xs">
+    <header className="flex h-14 shrink-0 items-center border-b border-line bg-surface px-5 shadow-xs">
       {/* 放大后的 Logo 容器 */}
       <div className="flex items-center [&>div]:h-[50px] [&>div]:w-[250px] [&_img]:max-h-[44px]">
         <Logo bordered={false} />
@@ -31,7 +32,7 @@ export default function TopBar({
       <nav className="-ml-19 flex items-center gap-6" aria-label="Sections">
         {NAV_ITEMS.map((item) => (
           <NavLink
-            key={item.to}
+            key={`${item.to}-${item.label}`}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
@@ -83,6 +84,7 @@ export default function TopBar({
 
       {/* 右侧用户信息 */}
       <div className="ml-auto flex items-center gap-3">
+        <ThemeToggle />
         <div className="hidden text-right sm:block">
           <div className="text-xs font-semibold text-ink">{user.name}</div>
           {user.role && (

@@ -8,6 +8,8 @@
 
   --color-navy-900: #0e3157;
   --color-navy-700: #14406e;
+  --color-navy-800: #10375f;
+  --color-navy-600: #2a5c96;
   --color-navy-500: #3c74b0;
   --color-navy-200: #9fbddd;
   --color-navy-100: #cfddee;
@@ -28,6 +30,27 @@
   --color-ok: #2e7d5b;
   --color-danger: #c8102e;
   --color-warn: #e8a33d;
+
+  /* Surfaces and soft tints. Light values here; dark values further down. */
+  --color-surface: #ffffff;
+  --color-ok-soft: #e4f1ea;
+  --color-warn-soft: #fdf2df;
+  --color-warn-ink: #8a6212;
+  --color-danger-soft: #fbe2e6;
+  --color-danger-ink: #a4505e;
+  --color-tint: #ebf1f6;
+  --color-footer: #e8edf4;
+  --color-tone-amber: #c58a1e;
+  --color-tone-amber-bg: #fefbf6;
+  --color-tone-purple: #5b4b8a;
+  --color-tone-purple-bg: #f9f8fc;
+  --color-tone-navy: #14406e;
+  --color-tone-navy-bg: #f8fafc;
+}
+
+/* Course colours on the timetable cards: lightness of the text */
+:root {
+  --lesson-text-l: 22%;
 }
 
 html,
@@ -58,4 +81,127 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Dark mode: the same colour names with dark values. The toggle sets
+   data-theme="dark" on <html> (see src/theme.js). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-navy-900: #7fb0e6;
+  --color-navy-800: #9cc3ee;
+  --color-navy-700: #3f7cc0;
+  --color-navy-600: #5b94d0;
+  --color-navy-500: #5b94d0;
+  --color-navy-200: #2f5a8a;
+  --color-navy-100: #1e3a5e;
+  --color-navy-50: #172a45;
+  --color-ink: #e6ebf2;
+  --color-ink-2: #c0cad8;
+  --color-ink-3: #9aa8bb;
+  --color-ink-4: #73829a;
+  --color-line: #2a364a;
+  --color-line-2: #222d3d;
+  --color-line-strong: #34425a;
+  --color-canvas: #0e141d;
+  --color-panel: #1b2433;
+  --color-ok: #4fb88a;
+  --color-danger: #f0626f;
+  --color-warn: #e8a33d;
+  --color-surface: #151d2a;
+  --color-ok-soft: #12302a;
+  --color-warn-soft: #36290f;
+  --color-warn-ink: #f0c36d;
+  --color-danger-soft: #3d1b22;
+  --color-danger-ink: #f2a0a9;
+  --color-tint: #1a2c46;
+  --color-footer: #111924;
+  --color-tone-amber: #e0a645;
+  --color-tone-amber-bg: #2a2214;
+  --color-tone-purple: #a897dc;
+  --color-tone-purple-bg: #221e34;
+  --color-tone-navy: #7fb0e6;
+  --color-tone-navy-bg: #162234;
+  --color-red-50: #3a1a20;
+  --color-red-100: #4a2028;
+  --color-red-300: #8a3a46;
+  --color-red-600: #f08090;
+  --color-red-900: #fbc6cd;
+  --color-amber-50: #33260f;
+  --color-amber-200: #6b4d1a;
+  --color-amber-300: #8a6420;
+  --color-amber-700: #f0c36d;
+  --color-amber-800: #f5cf86;
+  --color-amber-900: #f8dca5;
+  --color-emerald-50: #10291f;
+  --color-emerald-200: #1f5a43;
+  --color-emerald-300: #2b7a5b;
+  --color-emerald-700: #6fd3a6;
+  --color-emerald-900: #b4ecd2;
+  --color-green-700: #6fd3a6;
+  --color-blue-50: #14263d;
+  --color-blue-200: #28507f;
+  --color-blue-700: #8ab8ee;
+  --color-blue-900: #c4dcf8;
+  --lesson-text-l: 78%;
+}
+
+/* PDF / image export always draws on white paper, whatever the theme is. */
+.force-light {
+  color-scheme: light;
+  --color-navy-900: #0e3157;
+  --color-navy-700: #14406e;
+  --color-navy-800: #10375f;
+  --color-navy-600: #2a5c96;
+  --color-navy-500: #3c74b0;
+  --color-navy-200: #9fbddd;
+  --color-navy-100: #cfddee;
+  --color-navy-50: #e8f0f9;
+  --color-ink: #1a2230;
+  --color-ink-2: #3c4a5c;
+  --color-ink-3: #5a6879;
+  --color-ink-4: #8592a3;
+  --color-line: #d3dbe6;
+  --color-line-2: #e7ecf3;
+  --color-line-strong: #c3cedd;
+  --color-canvas: #edf0f5;
+  --color-panel: #f1f4f9;
+  --color-ok: #2e7d5b;
+  --color-danger: #c8102e;
+  --color-warn: #e8a33d;
+  --color-surface: #ffffff;
+  --color-ok-soft: #e4f1ea;
+  --color-warn-soft: #fdf2df;
+  --color-warn-ink: #8a6212;
+  --color-danger-soft: #fbe2e6;
+  --color-danger-ink: #a4505e;
+  --color-tint: #ebf1f6;
+  --color-footer: #e8edf4;
+  --color-tone-amber: #c58a1e;
+  --color-tone-amber-bg: #fefbf6;
+  --color-tone-purple: #5b4b8a;
+  --color-tone-purple-bg: #f9f8fc;
+  --color-tone-navy: #14406e;
+  --color-tone-navy-bg: #f8fafc;
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-300: #fca5a5;
+  --color-red-600: #dc2626;
+  --color-red-900: #7f1d1d;
+  --color-amber-50: #fffbeb;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-700: #047857;
+  --color-emerald-900: #064e3b;
+  --color-green-700: #15803d;
+  --color-blue-50: #eff6ff;
+  --color-blue-200: #bfdbfe;
+  --color-blue-700: #1d4ed8;
+  --color-blue-900: #1e3a8a;
+  --lesson-text-l: 22%;
 }

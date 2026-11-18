@@ -224,7 +224,7 @@ export default function RoomsTab() {
           <select
             value={form.room_type}
             onChange={(e) => set({ room_type: e.target.value })}
-            className={`${inputCls} bg-white`}>
+            className={`${inputCls} bg-surface`}>
             <option value="lecture">Classroom</option>
             <option value="lab">Computer lab</option>
           </select>
@@ -252,7 +252,7 @@ export default function RoomsTab() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search rooms…"
             aria-label="Search rooms"
-            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+            className="h-[30px] w-72 rounded border border-line bg-surface px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
           />
           <button
             type="button"
@@ -274,7 +274,7 @@ export default function RoomsTab() {
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
+        <div className="overflow-x-auto rounded-md border border-line bg-surface flex-1">
           <table className="w-full text-left text-xs">
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
@@ -313,7 +313,7 @@ export default function RoomsTab() {
                         e.stopPropagation();
                         openEdit(r);
                       }}
-                      className="rounded border border-line bg-white px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
+                      className="rounded border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
                       Edit
                     </button>
                   </td>
@@ -363,7 +363,7 @@ export default function RoomsTab() {
       </div>
 
       {adding && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-white p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Add room</h2>
             <button
@@ -396,7 +396,7 @@ export default function RoomsTab() {
       )}
 
       {!adding && selected && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-white p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit room</h2>
             <button
@@ -413,7 +413,7 @@ export default function RoomsTab() {
             <select
               value={form.status}
               onChange={(e) => set({ status: e.target.value })}
-              className={`${inputCls} bg-white`}>
+              className={`${inputCls} bg-surface`}>
               <option value="available">Available (normal)</option>
               <option value="maintenance">Under maintenance</option>
               <option value="out_of_service">Out of service</option>
@@ -464,7 +464,7 @@ export default function RoomsTab() {
               type="button"
               disabled={busy}
               onClick={handleDelete}
-              className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
+              className="h-[28px] rounded border border-danger/40 bg-surface px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
               Delete
             </button>
             <div className="flex gap-2">

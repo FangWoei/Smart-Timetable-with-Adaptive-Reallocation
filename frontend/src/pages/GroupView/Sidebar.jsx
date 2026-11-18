@@ -39,7 +39,7 @@ export default function Sidebar({
         : "Search groups, subjects…";
 
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-r border-line bg-white">
+    <aside className="flex w-[220px] shrink-0 flex-col overflow-y-auto border-r border-line bg-surface">
       <div className="p-3">
         <label className="flex h-[30px] items-center gap-2 rounded border border-line bg-panel px-2.5 focus-within:border-navy-500">
           <svg
@@ -168,10 +168,10 @@ export default function Sidebar({
           <li key={c.label}>
             <button
               type="button"
-              className={`flex h-7 w-full items-center px-3 text-[13px] hover:bg-panel ${c.soft ? "text-[#8A6212]" : "text-ink-2"}`}>
+              className={`flex h-7 w-full items-center px-3 text-[13px] hover:bg-panel ${c.soft ? "text-warn-ink" : "text-ink-2"}`}>
               {c.label}
               {c.soft && (
-                <span className="ml-auto rounded-full bg-[#FDF2DF] px-2 py-px text-[10px] font-semibold">
+                <span className="ml-auto rounded-full bg-warn-soft px-2 py-px text-[10px] font-semibold">
                   soft
                 </span>
               )}

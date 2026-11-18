@@ -129,11 +129,11 @@ export default function SubjectsTab() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search subjects, lecturers or groups…"
             aria-label="Search subjects"
-            className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+            className="h-[30px] w-72 rounded border border-line bg-surface px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
           />
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
+        <div className="overflow-x-auto rounded-md border border-line bg-surface flex-1">
           <table className="w-full text-left text-xs">
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
@@ -176,7 +176,7 @@ export default function SubjectsTab() {
                         e.stopPropagation();
                         openEdit(c);
                       }}
-                      className="rounded border border-line bg-white px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
+                      className="rounded border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
                       Edit
                     </button>
                   </td>
@@ -226,7 +226,7 @@ export default function SubjectsTab() {
       </div>
 
       {selected && form && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-white p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit subject</h2>
             <button

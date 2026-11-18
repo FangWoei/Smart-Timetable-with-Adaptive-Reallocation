@@ -20,7 +20,7 @@ export default function ManagePeoplePage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-line bg-white px-6 pt-3">
+      <div className="shrink-0 border-b border-line bg-surface px-6 pt-3">
         <Tabs
           tabs={TABS}
           value={tab}
@@ -36,7 +36,7 @@ export default function ManagePeoplePage() {
         ) : tab === "rooms" ? (
           <RoomsTab />
         ) : (
-          <div className="rounded-md border border-dashed border-line-strong bg-white p-8 text-center text-xs text-ink-4">
+          <div className="rounded-md border border-dashed border-line-strong bg-surface p-8 text-center text-xs text-ink-4">
             {TABS.find((t) => t.id === tab)?.label} management module coming
             soon.
           </div>

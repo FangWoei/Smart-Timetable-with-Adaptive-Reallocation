@@ -55,24 +55,24 @@ export default function TimetablePage() {
         <select
           value={group}
           onChange={(e) => setGroup(e.target.value)}
-          className="rounded border border-gray-300 bg-white px-2 py-1 text-sm">
+          className="rounded border border-line-strong bg-surface px-2 py-1 text-sm">
           {groups.map((g) => (
             <option key={g}>{g}</option>
           ))}
         </select>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-ink-3">
           Run #{data.run.id} · penalty {data.run.penalty} ·{" "}
           {data.entries.length} sessions
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse bg-white text-sm">
+        <table className="w-full table-fixed border-collapse bg-surface text-sm">
           <thead>
             <tr>
-              <th className="w-20 border border-gray-200 p-2">Time</th>
+              <th className="w-20 border border-line p-2">Time</th>
               {DAYS.map((d) => (
-                <th key={d} className="border border-gray-200 p-2">
+                <th key={d} className="border border-line p-2">
                   {d}
                 </th>
               ))}
@@ -81,7 +81,7 @@ export default function TimetablePage() {
           <tbody>
             {SLOTS.map((slot) => (
               <tr key={slot}>
-                <td className="border border-gray-200 p-2 text-gray-500">
+                <td className="border border-line p-2 text-ink-3">
                   {slotLabel(slot)}
                 </td>
                 {DAYS.map((_, i) => {
@@ -89,24 +89,22 @@ export default function TimetablePage() {
                   if (cells.covered.has(key)) return null;
                   const e = cells.starts[key];
                   if (!e) {
-                    return (
-                      <td key={key} className="h-12 border border-gray-200" />
-                    );
+                    return <td key={key} className="h-12 border border-line" />;
                   }
                   return (
                     <td
                       key={key}
                       rowSpan={e.hours}
-                      className="border border-gray-200 bg-blue-50 p-2 align-top">
+                      className="border border-line bg-blue-50 p-2 align-top">
                       <div className="font-medium">{e.module}</div>
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-ink-2">
                         {e.room} · {e.lecturer ?? "Unassigned"}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-ink-3">
                         {e.start_time}–{e.end_time}
                       </div>
                       {e.groups.length > 1 && (
-                        <div className="mt-1 text-xs text-gray-400">
+                        <div className="mt-1 text-xs text-ink-4">
                           with {e.groups.length - 1} other group
                           {e.groups.length > 2 ? "s" : ""}
                         </div>

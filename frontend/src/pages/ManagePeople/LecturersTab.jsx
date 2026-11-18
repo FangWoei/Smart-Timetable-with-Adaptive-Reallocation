@@ -144,7 +144,11 @@ export default function LecturersTab() {
       setFormError("Enter the lecturer's full name.");
       return;
     }
-    if (newForm.email.trim() && newForm.password && newForm.password.length < 8) {
+    if (
+      newForm.email.trim() &&
+      newForm.password &&
+      newForm.password.length < 8
+    ) {
       setFormError("The password needs at least 8 characters.");
       return;
     }
@@ -154,7 +158,10 @@ export default function LecturersTab() {
       await api.addLecturer({
         name: newForm.name.trim(),
         email: newForm.email.trim() || null,
-        password: newForm.email.trim() && newForm.password ? newForm.password : undefined,
+        password:
+          newForm.email.trim() && newForm.password
+            ? newForm.password
+            : undefined,
         is_part_time: newForm.type === "part-time",
       });
       await load();
@@ -227,7 +234,7 @@ export default function LecturersTab() {
     <button
       type="button"
       onClick={() => setFilterType(id)}
-      className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === id ? "bg-white text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}>
+      className={`rounded px-2.5 py-1 font-medium transition-colors ${filterType === id ? "bg-surface text-ink shadow-sm" : "text-ink-3 hover:text-ink"}`}>
       {label} ({count})
     </button>
   );
@@ -242,7 +249,7 @@ export default function LecturersTab() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search lecturers…"
               aria-label="Search lecturers"
-              className="h-[30px] w-72 rounded border border-line bg-white px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+              className="h-[30px] w-72 rounded border border-line bg-surface px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
             />
           </div>
           <div className="flex items-center gap-3">
@@ -268,7 +275,7 @@ export default function LecturersTab() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-line bg-white flex-1">
+        <div className="overflow-x-auto rounded-md border border-line bg-surface flex-1">
           <table className="w-full text-left text-xs">
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
@@ -327,7 +334,7 @@ export default function LecturersTab() {
                           e.stopPropagation();
                           openEdit(l.id);
                         }}
-                        className="rounded border border-line bg-white px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
+                        className="rounded border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
                         Edit
                       </button>
                     </td>
@@ -378,7 +385,7 @@ export default function LecturersTab() {
       </div>
 
       {adding && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-white p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Add lecturer</h2>
             <button
@@ -421,7 +428,9 @@ export default function LecturersTab() {
               <input
                 type="text"
                 value={newForm.password}
-                onChange={(e) => setNewForm({ ...newForm, password: e.target.value })}
+                onChange={(e) =>
+                  setNewForm({ ...newForm, password: e.target.value })
+                }
                 placeholder="Give this to the lecturer"
                 className={inputCls}
               />
@@ -433,7 +442,7 @@ export default function LecturersTab() {
             <select
               value={newForm.type}
               onChange={(e) => setNewForm({ ...newForm, type: e.target.value })}
-              className={`${inputCls} bg-white`}>
+              className={`${inputCls} bg-surface`}>
               <option value="full-time">Full-time</option>
               <option value="part-time">Part-time</option>
             </select>
@@ -462,7 +471,7 @@ export default function LecturersTab() {
       )}
 
       {!adding && selected && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-white p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit lecturer</h2>
             <button
@@ -485,7 +494,7 @@ export default function LecturersTab() {
             <select
               value={editType}
               onChange={(e) => setEditType(e.target.value)}
-              className={`${inputCls} bg-white`}>
+              className={`${inputCls} bg-surface`}>
               <option value="full-time">Full-time</option>
               <option value="part-time">Part-time</option>
             </select>
@@ -534,7 +543,7 @@ export default function LecturersTab() {
                             type="button"
                             onClick={() => toggleCell(di + 1, i + 1)}
                             aria-label={`${DAYS[di]} ${label} ${off ? "unavailable" : "available"}`}
-                            className={`flex h-7 items-center justify-center rounded border text-[10px] font-medium transition-all hover:opacity-80 ${off ? "border-red-300 bg-[#FBE2E6] text-danger" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
+                            className={`flex h-7 items-center justify-center rounded border text-[10px] font-medium transition-all hover:opacity-80 ${off ? "border-red-300 bg-danger-soft text-danger" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
                             {off ? "off" : "avail"}
                           </button>
                         );
@@ -559,7 +568,7 @@ export default function LecturersTab() {
               type="button"
               disabled={busy}
               onClick={handleDelete}
-              className="h-[28px] rounded border border-danger/40 bg-white px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
+              className="h-[28px] rounded border border-danger/40 bg-surface px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
               Delete
             </button>
             <div className="flex gap-2">
