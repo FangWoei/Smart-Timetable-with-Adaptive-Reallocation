@@ -6,9 +6,9 @@ const VIEWS = [
 ];
 
 const ghost =
-  "flex h-[30px] items-center gap-1.5 rounded bg-panel px-3 text-xs text-ink-2 hover:bg-line-2 disabled:opacity-40";
+  "flex h-9 items-center gap-1.5 rounded-xl bg-panel px-3 text-xs text-ink-2 hover:bg-line-2 disabled:opacity-40";
 const outline =
-  "flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-surface px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-9 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
 
 function Divider() {
   return <span className="mx-1 h-7 w-px bg-line" aria-hidden />;
@@ -40,7 +40,7 @@ export default function Toolbar({
       <button
         type="button"
         onClick={onGenerate}
-        className="flex h-[30px] items-center gap-2 rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900">
+        className="flex h-9 items-center gap-2 rounded-xl bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900">
         <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden>
           <path d="M0 0 L10 6 L0 12 Z" fill="currentColor" />
         </svg>
@@ -145,7 +145,7 @@ export default function Toolbar({
       <div
         role="tablist"
         aria-label="Timetable view"
-        className="flex rounded bg-panel p-0.5">
+        className="flex rounded-xl bg-panel p-0.5">
         {VIEWS.map((v) => {
           const active = v.id === view;
           return (
@@ -185,7 +185,7 @@ export default function Toolbar({
           onClick={onDeletePlan}
           disabled={!canDeletePlan}
           title="Delete this plan"
-          className="inline-flex h-[30px] items-center gap-1.5 rounded border border-danger/40 bg-surface px-3 text-[13px] font-medium text-danger hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-40">
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-danger/40 bg-surface px-3 text-[13px] font-medium text-danger hover:bg-danger/5 disabled:cursor-not-allowed disabled:opacity-40">
           Delete plan
         </button>
         <span
@@ -199,7 +199,7 @@ export default function Toolbar({
           type="button"
           onClick={onApprove}
           disabled={!canApprove}
-          className="flex h-[30px] items-center rounded bg-ok px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
+          className="flex h-9 items-center rounded-xl bg-ok px-4 text-[13px] font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
           {isPublished ? "Unpublish" : "Publish"}
         </button>
       </div>

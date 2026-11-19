@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api, isPlacedEntry, toGridGroups } from "../../api";
+import PageHeader, { HeaderChip } from "../../components/PageHeader.jsx";
 import TimetableGrid from "../../components/TimetableGrid.jsx";
 import { refreshSemester } from "../../semester.js";
 import BottomPanels from "./BottomPanels.jsx";
@@ -742,231 +743,247 @@ export default function GroupViewPage() {
     : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col relative">
-      <Toolbar
-        view={view}
-        onViewChange={(newView) => {
-          setView(newView);
-          setSelectedLessonData(null);
-        }}
-        onGenerate={handleGenerate}
-        onVerify={handleVerify}
-        onUndo={() => step("undo")}
-        onRedo={() => step("redo")}
-        undoLabel={history.undo.at(-1)?.label ?? null}
-        redoLabel={history.redo.at(-1)?.label ?? null}
-        onToggleLock={handleToggleLock}
-        selectedLocked={
-          selectedLessonData ? !!selectedLessonData.lesson.locked : null
-        }
-        onApprove={handlePublish}
-        canApprove={conflicts === 0 && !busy}
-        isPublished={!!status?.active_is_published}
-        onDeletePlan={handleDeletePlan}
-        canDeletePlan={!busy && (status?.active_run_id ?? run?.id) != null}
-        onExportBatch={handleBatchExport}
-        isExporting={isExporting}
-        exportState={exportState}
-        totalItemsCount={exportTargets.length}
-      />
-
-      <div className="flex min-h-0 flex-1 overflow-hidden pb-8">
-        <Sidebar
-          groups={displayRows}
-          selectedId={activeId}
-          onSelect={setSelectedId}
+    <div className="relative min-h-0 flex-1 overflow-y-auto">
+      <PageHeader
+        eyebrow="Scheduler"
+        title="Timetable scheduler"
+        subtitle="Generate the timetable, check it for clashes, adjust lessons by hand, then publish it.">
+        {run && (
+          <HeaderChip>
+            Run #{run.id} · {run.status} · penalty {run.penalty}
+          </HeaderChip>
+        )}
+        <HeaderChip>
+          {status?.active_is_published ? "Published" : "Draft"}
+        </HeaderChip>
+      </PageHeader>
+      {/* The tool area fills the screen under the banner; the banner scrolls away */}
+      <div className="relative flex h-[calc(100vh-56px)] min-h-[560px] flex-col">
+        <Toolbar
           view={view}
-          resources={resources}
+          onViewChange={(newView) => {
+            setView(newView);
+            setSelectedLessonData(null);
+          }}
+          onGenerate={handleGenerate}
+          onVerify={handleVerify}
+          onUndo={() => step("undo")}
+          onRedo={() => step("redo")}
+          undoLabel={history.undo.at(-1)?.label ?? null}
+          redoLabel={history.redo.at(-1)?.label ?? null}
+          onToggleLock={handleToggleLock}
+          selectedLocked={
+            selectedLessonData ? !!selectedLessonData.lesson.locked : null
+          }
+          onApprove={handlePublish}
+          canApprove={conflicts === 0 && !busy}
+          isPublished={!!status?.active_is_published}
+          onDeletePlan={handleDeletePlan}
+          canDeletePlan={!busy && (status?.active_run_id ?? run?.id) != null}
+          onExportBatch={handleBatchExport}
+          isExporting={isExporting}
+          exportState={exportState}
+          totalItemsCount={exportTargets.length}
         />
 
-        <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
-          <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
-            <h1 className="text-[15px] font-semibold text-ink">
-              {!loaded
-                ? "Loading timetable…"
-                : view === "group"
-                  ? `${groups.length} groups`
-                  : view === "lecturer"
-                    ? `${displayRows.length} lecturers`
-                    : `${displayRows.length} rooms`}{" "}
-              · {sessions} sessions
-            </h1>
-            {run && (
-              <p className="text-xs text-ink-3">
-                Run #{run.id} · {run.status} · penalty {run.penalty}
-              </p>
-            )}
-            {busy && <p className="text-xs text-ink-3">Working…</p>}
-            {message && (
-              <p className="text-xs font-medium text-navy-700">{message}</p>
-            )}
-            {error && (
-              <p className="text-xs font-medium text-danger">{error}</p>
-            )}
+        <div className="flex min-h-0 flex-1 overflow-hidden pb-8">
+          <Sidebar
+            groups={displayRows}
+            selectedId={activeId}
+            onSelect={setSelectedId}
+            view={view}
+            resources={resources}
+          />
 
-            <div className="ml-auto flex items-center gap-3">
-              {activeId === ALL_ID && (
-                <div
-                  role="group"
-                  aria-label="Show all layout"
-                  className="flex rounded bg-panel p-0.5 text-[12px]">
-                  {[
-                    ["separate", "Separate"],
-                    ["combined", "One timetable"],
-                  ].map(([v, label]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setAllLayout(v)}
-                      aria-pressed={allLayout === v}
-                      title={
-                        v === "separate"
-                          ? "One timetable for each group"
-                          : "Every course together in one timetable"
-                      }
-                      className={[
-                        "rounded px-2.5 py-1 font-medium",
-                        allLayout === v
-                          ? "bg-surface text-navy-700 shadow-xs"
-                          : "text-ink-3 hover:text-ink",
-                      ].join(" ")}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
+          <main className="min-w-0 flex-1 flex flex-col overflow-hidden bg-canvas">
+            <div className="px-4 pt-3 pb-2 flex shrink-0 items-center gap-4 bg-canvas z-10 border-b border-transparent">
+              <h1 className="text-[15px] font-semibold text-ink">
+                {!loaded
+                  ? "Loading timetable…"
+                  : view === "group"
+                    ? `${groups.length} groups`
+                    : view === "lecturer"
+                      ? `${displayRows.length} lecturers`
+                      : `${displayRows.length} rooms`}{" "}
+                · {sessions} sessions
+              </h1>
+              {run && (
+                <p className="text-xs text-ink-3">
+                  Run #{run.id} · {run.status} · penalty {run.penalty}
+                </p>
               )}
-              <div className="flex items-center rounded border border-line bg-surface text-[13px] text-ink-2">
-                <button
-                  type="button"
-                  aria-label="Zoom out"
-                  onClick={() => setZoom((z) => Math.max(70, z - 10))}
-                  className="px-2.5 py-0.5 hover:bg-panel">
-                  −
-                </button>
-                <span className="w-11 text-center text-[11px] text-ink-3">
-                  {zoom}%
-                </span>
-                <button
-                  type="button"
-                  aria-label="Zoom in"
-                  onClick={() => setZoom((z) => Math.min(160, z + 10))}
-                  className="px-2.5 py-0.5 hover:bg-panel">
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
+              {busy && <p className="text-xs text-ink-3">Working…</p>}
+              {message && (
+                <p className="text-xs font-medium text-navy-700">{message}</p>
+              )}
+              {error && (
+                <p className="text-xs font-medium text-danger">{error}</p>
+              )}
 
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            {displayRows.length === 0 && !error ? (
-              <p className="p-8 text-center text-sm text-ink-4">
-                No timetable data available for this view.
-              </p>
-            ) : (
-              <>
-                {activeId === ALL_ID && allLayout === "combined" ? (
-                  <TimetableGrid
-                    groups={[combinedRow]}
-                    selectedId={combinedRow.id}
-                    onSelect={() => {}}
-                    zoom={zoom}
-                    selectedLesson={selectedLessonData}
-                    onLessonSelect={setSelectedLessonData}
-                    dnd={dnd}
-                    view={view}
-                  />
-                ) : activeId === ALL_ID ? (
-                  <div className="space-y-6">
-                    {displayRows.map((g) => (
-                      <TimetableGrid
-                        key={g.id}
-                        groups={[g]}
-                        selectedId={g.id}
-                        onSelect={setSelectedId}
-                        zoom={zoom}
-                        selectedLesson={selectedLessonData}
-                        onLessonSelect={setSelectedLessonData}
-                        dnd={dnd}
-                        view={view}
-                      />
+              <div className="ml-auto flex items-center gap-3">
+                {activeId === ALL_ID && (
+                  <div
+                    role="group"
+                    aria-label="Show all layout"
+                    className="flex rounded bg-panel p-0.5 text-[12px]">
+                    {[
+                      ["separate", "Separate"],
+                      ["combined", "One timetable"],
+                    ].map(([v, label]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setAllLayout(v)}
+                        aria-pressed={allLayout === v}
+                        title={
+                          v === "separate"
+                            ? "One timetable for each group"
+                            : "Every course together in one timetable"
+                        }
+                        className={[
+                          "rounded px-2.5 py-1 font-medium",
+                          allLayout === v
+                            ? "bg-surface text-navy-700 shadow-xs"
+                            : "text-ink-3 hover:text-ink",
+                        ].join(" ")}>
+                        {label}
+                      </button>
                     ))}
                   </div>
-                ) : (
-                  <TimetableGrid
-                    groups={displayRows}
-                    selectedId={activeId}
-                    onSelect={setSelectedId}
-                    zoom={zoom}
-                    selectedLesson={selectedLessonData}
-                    onLessonSelect={setSelectedLessonData}
-                    dnd={dnd}
-                    view={view}
-                  />
                 )}
-                <BottomPanels
-                  unplacedLessons={unplacedLessons}
-                  onAutoPlaceAll={handleAutoPlaceAll}
-                  onLessonDragStart={dnd.onDragStart}
-                  onLessonDragEnd={dnd.onDragEnd}
-                  canUnplace={drag?.source === "grid"}
-                  onDropUnplace={dnd.onDropUnplace}
-                />
-              </>
-            )}
-          </div>
-        </main>
+                <div className="flex items-center rounded border border-line bg-surface text-[13px] text-ink-2">
+                  <button
+                    type="button"
+                    aria-label="Zoom out"
+                    onClick={() => setZoom((z) => Math.max(70, z - 10))}
+                    className="px-2.5 py-0.5 hover:bg-panel">
+                    −
+                  </button>
+                  <span className="w-11 text-center text-[11px] text-ink-3">
+                    {zoom}%
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Zoom in"
+                    onClick={() => setZoom((z) => Math.min(160, z + 10))}
+                    className="px-2.5 py-0.5 hover:bg-panel">
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
 
-        {selectedLessonData && selectedGroup && (
-          <LessonDetailsPanel
-            lesson={selectedLessonData.lesson}
-            group={selectedGroup}
-            onClose={() => setSelectedLessonData(null)}
-          />
-        )}
-      </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              {displayRows.length === 0 && !error ? (
+                <p className="p-8 text-center text-sm text-ink-4">
+                  No timetable data available for this view.
+                </p>
+              ) : (
+                <>
+                  {activeId === ALL_ID && allLayout === "combined" ? (
+                    <TimetableGrid
+                      groups={[combinedRow]}
+                      selectedId={combinedRow.id}
+                      onSelect={() => {}}
+                      zoom={zoom}
+                      selectedLesson={selectedLessonData}
+                      onLessonSelect={setSelectedLessonData}
+                      dnd={dnd}
+                      view={view}
+                    />
+                  ) : activeId === ALL_ID ? (
+                    <div className="space-y-6">
+                      {displayRows.map((g) => (
+                        <TimetableGrid
+                          key={g.id}
+                          groups={[g]}
+                          selectedId={g.id}
+                          onSelect={setSelectedId}
+                          zoom={zoom}
+                          selectedLesson={selectedLessonData}
+                          onLessonSelect={setSelectedLessonData}
+                          dnd={dnd}
+                          view={view}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <TimetableGrid
+                      groups={displayRows}
+                      selectedId={activeId}
+                      onSelect={setSelectedId}
+                      zoom={zoom}
+                      selectedLesson={selectedLessonData}
+                      onLessonSelect={setSelectedLessonData}
+                      dnd={dnd}
+                      view={view}
+                    />
+                  )}
+                  <BottomPanels
+                    unplacedLessons={unplacedLessons}
+                    onAutoPlaceAll={handleAutoPlaceAll}
+                    onLessonDragStart={dnd.onDragStart}
+                    onLessonDragEnd={dnd.onDragEnd}
+                    canUnplace={drag?.source === "grid"}
+                    onDropUnplace={dnd.onDropUnplace}
+                  />
+                </>
+              )}
+            </div>
+          </main>
 
-      {/* Shown only while a lesson from the timetable is being dragged, so you
+          {selectedLessonData && selectedGroup && (
+            <LessonDetailsPanel
+              lesson={selectedLessonData.lesson}
+              group={selectedGroup}
+              onClose={() => setSelectedLessonData(null)}
+            />
+          )}
+        </div>
+
+        {/* Shown only while a lesson from the timetable is being dragged, so you
           do not have to scroll down to the Unplaced lessons box. */}
-      {drag?.source === "grid" && (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            if (!overZone) setOverZone(true);
-          }}
-          onDragLeave={() => setOverZone(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            dnd.onDropUnplace();
-          }}
-          className={`absolute left-1/2 top-[60px] z-30 -translate-x-1/2 rounded-lg border-2 border-dashed px-6 py-2 text-[13px] font-semibold shadow-lg ${
-            overZone
-              ? "border-navy-500 bg-navy-700 text-white"
-              : "border-navy-500 bg-surface text-navy-700"
-          }`}>
-          Drop here to put it back in Unplaced lessons
-        </div>
-      )}
+        {drag?.source === "grid" && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (!overZone) setOverZone(true);
+            }}
+            onDragLeave={() => setOverZone(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              dnd.onDropUnplace();
+            }}
+            className={`absolute left-1/2 top-[60px] z-30 -translate-x-1/2 rounded-lg border-2 border-dashed px-6 py-2 text-[13px] font-semibold shadow-lg ${
+              overZone
+                ? "border-navy-500 bg-navy-700 text-white"
+                : "border-navy-500 bg-surface text-navy-700"
+            }`}>
+            Drop here to put it back in Unplaced lessons
+          </div>
+        )}
 
-      <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-footer px-4 text-[11px] text-ink-3 z-20">
-        <div className="flex items-center gap-4">
-          <span className="text-ink">
-            {placedLessonsCount} of {totalLessonsCount} lessons placed
-          </span>
-          <span className="flex items-center gap-1.5 font-medium text-danger">
-            <span className="size-1.5 rounded-full bg-danger"></span>
-            {conflicts} conflicts
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>
-            {run
-              ? `Run #${run.id} · ${run.status} · penalty ${run.penalty}`
-              : "No run yet"}
-          </span>
-        </div>
-        <div className="font-medium"></div>
-      </footer>
+        <footer className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-between border-t border-line-strong bg-footer px-4 text-[11px] text-ink-3 z-20">
+          <div className="flex items-center gap-4">
+            <span className="text-ink">
+              {placedLessonsCount} of {totalLessonsCount} lessons placed
+            </span>
+            <span className="flex items-center gap-1.5 font-medium text-danger">
+              <span className="size-1.5 rounded-full bg-danger"></span>
+              {conflicts} conflicts
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span>
+              {run
+                ? `Run #${run.id} · ${run.status} · penalty ${run.penalty}`
+                : "No run yet"}
+            </span>
+          </div>
+          <div className="font-medium"></div>
+        </footer>
+      </div>
     </div>
   );
 }

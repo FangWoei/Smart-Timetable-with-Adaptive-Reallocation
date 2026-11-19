@@ -1,6 +1,7 @@
 // src/pages/Holidays/HolidaysPage.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api.js";
+import PageHeader, { HeaderChip } from "../../components/PageHeader.jsx";
 
 const STATES = [
   ["PNG", "Penang"],
@@ -37,11 +38,11 @@ const MONTHS = [
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const btn =
-  "flex h-[30px] items-center gap-1.5 rounded border border-line-strong bg-surface px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-9 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-3 text-[13px] text-ink-2 hover:bg-panel disabled:cursor-not-allowed disabled:opacity-50";
 const btnPrimary =
-  "flex h-[30px] items-center gap-1.5 rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex h-9 items-center gap-1.5 rounded-xl bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-50";
 const field =
-  "h-[30px] rounded border border-line-strong bg-surface px-2 text-[13px] text-ink outline-none focus:border-navy-500";
+  "h-9 rounded-xl border border-line-strong bg-surface px-2 text-[13px] text-ink outline-none focus:border-navy-500";
 
 // 用本地时间解析 YYYY-MM-DD，避免时区把日期推到前一天
 const parse = (iso) => {
@@ -133,10 +134,21 @@ export default function HolidaysPage() {
     semester && iso >= semester.start_date && iso <= semester.end_date;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-canvas">
+      <PageHeader
+        eyebrow="Holidays"
+        title="Holidays & no-class days"
+        subtitle="Public holidays are added when you save the semester dates. Add your own closures here, and the timetable will skip them.">
+        {rows && (
+          <HeaderChip>
+            {rows.length} holidays in {year}
+          </HeaderChip>
+        )}
+        {rows && <HeaderChip>{closures} no-class days</HeaderChip>}
+      </PageHeader>
       {/* 工具栏 */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-3 py-2">
-        <div className="flex items-center rounded border border-line-strong bg-surface text-[13px] text-ink-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-6 py-3">
+        <div className="flex items-center rounded-xl border border-line-strong bg-surface text-[13px] text-ink-2">
           <button
             type="button"
             aria-label="Previous year"
@@ -179,7 +191,7 @@ export default function HolidaysPage() {
         <div
           role="tablist"
           aria-label="Holiday view"
-          className="ml-2 flex rounded bg-panel p-0.5">
+          className="ml-2 flex rounded-xl bg-panel p-0.5">
           {[
             ["list", "List"],
             ["calendar", "Calendar"],
@@ -208,7 +220,7 @@ export default function HolidaysPage() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div className="px-6 py-5">
         {/* 状态行 */}
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3">
           <span className="text-[15px] font-semibold text-ink">
@@ -228,7 +240,7 @@ export default function HolidaysPage() {
         </div>
 
         {rows && rows.length === 0 && !error && (
-          <p className="rounded-lg border border-dashed border-line-strong bg-surface p-8 text-center text-sm text-ink-4">
+          <p className="rounded-2xl border border-dashed border-line-strong bg-surface p-8 text-center text-sm text-ink-4">
             No holidays for {year} yet. Click “Sync public holidays {year}” or
             add a closure manually.
           </p>
@@ -241,7 +253,7 @@ export default function HolidaysPage() {
               list.length === 0 ? null : (
                 <section
                   key={m}
-                  className="overflow-hidden rounded-lg border border-line bg-surface shadow-xs">
+                  className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                   <h2 className="border-b border-line bg-panel px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
                     {MONTHS[m]}{" "}
                     <span className="font-normal text-ink-4">
@@ -341,7 +353,7 @@ function MonthCard({ year, month, name, holidayMap, semester }) {
     `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
   return (
-    <div className="rounded-lg border border-line bg-surface p-3 shadow-xs">
+    <div className="rounded-2xl border border-line bg-surface p-3 shadow-sm">
       <h3 className="mb-2 text-[13px] font-semibold text-ink">{name}</h3>
       <div className="grid grid-cols-7 gap-0.5 text-center text-[11px]">
         {WEEKDAYS.map((w) => (
@@ -409,7 +421,7 @@ function AddClosureDialog({ defaultYear, onClose, onSaved }) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form
         onSubmit={submit}
-        className="w-full max-w-sm space-y-3 rounded-lg bg-surface p-4 shadow-lg">
+        className="w-full max-w-sm space-y-3 rounded-2xl bg-surface p-4 shadow-lg">
         <h2 className="text-[15px] font-semibold text-ink">Add closure</h2>
 
         <label className="block text-xs text-ink-3">

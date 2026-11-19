@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import Logo from "../components/Logo.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import { NAV_ITEMS } from "../nav.js";
+import UserMenu from "./UserMenu.jsx";
 
 const MENUS = [
   "File",
@@ -85,25 +86,7 @@ export default function TopBar({
       {/* 右侧用户信息 */}
       <div className="ml-auto flex items-center gap-3">
         <ThemeToggle />
-        <div className="hidden text-right sm:block">
-          <div className="text-xs font-semibold text-ink">{user.name}</div>
-          {user.role && (
-            <div className="text-[11px] text-ink-4">{user.role}</div>
-          )}
-        </div>
-        <span
-          aria-hidden
-          className="flex size-7 items-center justify-center rounded-full bg-navy-700 text-[10px] font-bold text-white shadow-xs">
-          {user.initials}
-        </span>
-        {onSignOut && (
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="rounded px-2 py-1 text-xs text-ink-3 hover:bg-panel hover:text-ink">
-            Sign out
-          </button>
-        )}
+        <UserMenu user={user} onSignOut={onSignOut} />
       </div>
     </header>
   );
