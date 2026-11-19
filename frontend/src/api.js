@@ -3,16 +3,27 @@ import { startTask } from "./loading/progress.js";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
-// Adds the login token to a request, and sends the user back to the login page
-// if the server says the session is no longer valid.
+// Adds the login token to a request. If the server says the login is no longer
+// valid, it first tries to renew it, and only then logs the user out.
 async function authedFetch(url, options = {}) {
   const endTask = startTask(); // the loading bar follows every API call
   try {
+    const send = (token) => {
+      const headers = { ...options.headers };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return fetch(url, { ...options, headers });
+    };
     const token = await getToken();
-    const headers = { ...options.headers };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(url, { ...options, headers });
-    if (res.status === 401 && token) await supabase?.auth.signOut();
+    let res = await send(token);
+    if (res.status === 401 && token) {
+      // The login may just have expired: get a new one and try once more.
+      // Only if that fails too is the user really logged out.
+      const { data, error } = (await supabase?.auth.refreshSession()) ?? {};
+      if (!error && data?.session) {
+        res = await send(data.session.access_token);
+      }
+      if (res.status === 401) await supabase?.auth.signOut();
+    }
     return res;
   } finally {
     endTask();
@@ -42,7 +53,9 @@ async function request(path, options = {}) {
       typeof detail === "string"
         ? detail
         : (detail?.message ?? `Request failed (${res.status})`);
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = res.status; // lets the login code tell "not allowed" from "server down"
+    throw err;
   }
   return body;
 }
