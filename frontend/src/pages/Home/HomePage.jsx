@@ -112,7 +112,7 @@ export default function HomePage() {
       note: d.rooms
         ? `${rooms.filter((r) => r.status && r.status !== "available").length} unavailable`
         : "not loaded",
-      to: "/people",
+      to: "/people?tab=rooms",
       cta: "Manage rooms",
     },
     {
