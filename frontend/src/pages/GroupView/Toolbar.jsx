@@ -177,7 +177,7 @@ export default function Toolbar({
           className={outline}>
           {isExporting && exportState
             ? `⏳ Generating ${exportState.done}/${exportState.total}...`
-            : `Download All PDFs (.zip) (${totalItemsCount})`}
+            : `Download… (${totalItemsCount})`}
         </button>
 
         <button

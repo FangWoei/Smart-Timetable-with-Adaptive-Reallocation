@@ -113,6 +113,17 @@ export async function renderGroupPdf(group, view = "group") {
  * @param onProgress (done, total) => void
  */
 export async function exportGroupBatchZip(targets, view, onProgress) {
+  // A single choice is just one PDF, no zip needed.
+  if (targets.length === 1) {
+    onProgress?.(0, 1);
+    const buf = await renderGroupPdf(targets[0], view);
+    download(
+      new Blob([buf], { type: "application/pdf" }),
+      `${safe(targets[0].id)}_Timetable.pdf`,
+    );
+    onProgress?.(1, 1);
+    return;
+  }
   const label = VIEW_LABELS[view] || "Timetables";
   const folderName = `${label}_Timetables_PDFs`;
   const zip = new JSZip();

@@ -182,6 +182,17 @@ export default function LecturersTab() {
     setBlocked(next);
   }
 
+  // One click on a day (or an hour row) turns the whole line off; if it is all off already, turns it back on.
+  function toggleLine(cells) {
+    if (blocked === null) return;
+    const next = new Set(blocked);
+    const allOff = cells.every((k) => next.has(k));
+    cells.forEach((k) => (allOff ? next.delete(k) : next.add(k)));
+    setBlocked(next);
+  }
+  const dayCells = (day) => SLOT_LABELS.map((_, i) => cellKey(day, i + 1));
+  const rowCells = (slot) => DAYS.map((_, di) => cellKey(di + 1, slot));
+
   async function handleSave() {
     if (!selected) return;
     setBusy(true);
@@ -385,7 +396,7 @@ export default function LecturersTab() {
       </div>
 
       {adding && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start sticky top-4 rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Add lecturer</h2>
             <button
@@ -471,7 +482,7 @@ export default function LecturersTab() {
       )}
 
       {!adding && selected && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start sticky top-4 rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit lecturer</h2>
             <button
@@ -516,7 +527,8 @@ export default function LecturersTab() {
           {editType === "part-time" && (
             <div className="mt-4 border-t border-line pt-3">
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-                Weekly availability — click a cell to toggle
+                Weekly availability — click a cell to toggle, or a day / time to
+                toggle the whole line
               </div>
               {blocked === null ? (
                 <p className="mt-2 text-[11px] text-ink-4">
@@ -525,16 +537,34 @@ export default function LecturersTab() {
               ) : (
                 <div className="mt-2 grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-1.5 text-center text-[11px]">
                   <div></div>
-                  {DAYS.map((d) => (
-                    <div key={d} className="font-semibold text-ink-3">
-                      {d}
-                    </div>
-                  ))}
+                  {DAYS.map((d, di) => {
+                    const dayOff = dayCells(di + 1).every((k) =>
+                      blocked.has(k),
+                    );
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleLine(dayCells(di + 1))}
+                        title={
+                          dayOff
+                            ? `Make all of ${d} available`
+                            : `Mark all of ${d} unavailable`
+                        }
+                        className={`rounded-xl border py-1 font-semibold transition-colors ${dayOff ? "border-red-300 bg-danger-soft text-danger" : "border-line text-ink-3 hover:bg-panel"}`}>
+                        {d}
+                      </button>
+                    );
+                  })}
                   {SLOT_LABELS.map((label, i) => (
                     <div key={label} className="contents">
-                      <div className="flex items-center justify-end whitespace-nowrap pr-2 text-[10px] text-ink-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleLine(rowCells(i + 1))}
+                        title={`Toggle ${label} for every day`}
+                        className="flex items-center justify-end whitespace-nowrap pr-2 text-[10px] text-ink-4 hover:text-ink">
                         {label}
-                      </div>
+                      </button>
                       {DAYS.map((_, di) => {
                         const off = blocked.has(cellKey(di + 1, i + 1));
                         return (

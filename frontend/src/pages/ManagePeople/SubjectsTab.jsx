@@ -226,7 +226,7 @@ export default function SubjectsTab() {
       </div>
 
       {selected && form && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start sticky top-4 rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit subject</h2>
             <button

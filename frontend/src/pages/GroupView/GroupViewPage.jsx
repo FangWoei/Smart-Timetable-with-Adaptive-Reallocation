@@ -6,6 +6,7 @@ import PageHeader, { HeaderChip } from "../../components/PageHeader.jsx";
 import TimetableGrid from "../../components/TimetableGrid.jsx";
 import { refreshSemester } from "../../semester.js";
 import BottomPanels from "./BottomPanels.jsx";
+import ExportDialog from "./ExportDialog.jsx";
 import LessonDetailsPanel from "./LessonDetailsPanel.jsx";
 import Sidebar, { ALL_ID } from "./Sidebar.jsx";
 import Toolbar from "./Toolbar.jsx";
@@ -111,6 +112,7 @@ export default function GroupViewPage() {
   const stepRef = useRef(null);
 
   const [exportState, setExportState] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const isExporting = exportState !== null;
 
   // 可用教室名单（来自 GET /rooms，没有这个接口就只用时间表里出现过的教室）
@@ -687,15 +689,16 @@ export default function GroupViewPage() {
     [displayRows],
   );
 
-  const handleBatchExport = async () => {
+  const handleBatchExport = async (chosen) => {
     if (isExporting) return;
-    if (exportTargets.length === 0) {
+    if (chosen.length === 0) {
       alert("No timetable items to export.");
       return;
     }
-    setExportState({ done: 0, total: exportTargets.length });
+    setExportOpen(false);
+    setExportState({ done: 0, total: chosen.length });
     try {
-      await exportGroupBatchZip(exportTargets, view, (done, total) =>
+      await exportGroupBatchZip(chosen, view, (done, total) =>
         setExportState({ done, total }),
       );
     } catch (err) {
@@ -780,7 +783,7 @@ export default function GroupViewPage() {
           isPublished={!!status?.active_is_published}
           onDeletePlan={handleDeletePlan}
           canDeletePlan={!busy && (status?.active_run_id ?? run?.id) != null}
-          onExportBatch={handleBatchExport}
+          onExportBatch={() => setExportOpen(true)}
           isExporting={isExporting}
           exportState={exportState}
           totalItemsCount={exportTargets.length}
@@ -865,7 +868,7 @@ export default function GroupViewPage() {
                   <button
                     type="button"
                     aria-label="Zoom in"
-                    onClick={() => setZoom((z) => Math.min(160, z + 10))}
+                    onClick={() => setZoom((z) => Math.min(200, z + 10))}
                     className="px-2.5 py-0.5 hover:bg-panel">
                     +
                   </button>
@@ -919,17 +922,24 @@ export default function GroupViewPage() {
                       view={view}
                     />
                   )}
-                  <BottomPanels
-                    unplacedLessons={unplacedLessons}
-                    onAutoPlaceAll={handleAutoPlaceAll}
-                    onLessonDragStart={dnd.onDragStart}
-                    onLessonDragEnd={dnd.onDragEnd}
-                    canUnplace={drag?.source === "grid"}
-                    onDropUnplace={dnd.onDropUnplace}
-                  />
                 </>
               )}
             </div>
+
+            {/* Pinned to the bottom of the screen so lessons can be dragged
+              between the timetable and Unplaced without scrolling. */}
+            {displayRows.length > 0 && (
+              <div className="shrink-0 border-t border-line-strong bg-canvas px-4 pb-3 pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+                <BottomPanels
+                  unplacedLessons={unplacedLessons}
+                  onAutoPlaceAll={handleAutoPlaceAll}
+                  onLessonDragStart={dnd.onDragStart}
+                  onLessonDragEnd={dnd.onDragEnd}
+                  canUnplace={drag?.source === "grid"}
+                  onDropUnplace={dnd.onDropUnplace}
+                />
+              </div>
+            )}
           </main>
 
           {selectedLessonData && selectedGroup && (
@@ -984,6 +994,14 @@ export default function GroupViewPage() {
           <div className="font-medium"></div>
         </footer>
       </div>
+      {exportOpen && (
+        <ExportDialog
+          targets={exportTargets}
+          view={view}
+          onClose={() => setExportOpen(false)}
+          onConfirm={handleBatchExport}
+        />
+      )}
     </div>
   );
 }

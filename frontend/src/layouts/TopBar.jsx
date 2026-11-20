@@ -30,7 +30,7 @@ export default function TopBar({
       </div>
 
       {/* 使用负边距 -ml-2 强行把导航栏拉近 Logo，你可以自己把数字改成 -ml-3 或 -ml-4 调整得更近 */}
-      <nav className="-ml-19 flex items-center gap-6" aria-label="Sections">
+      <nav className="-ml-12 flex items-center gap-6" aria-label="Sections">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={`${item.to}-${item.label}`}
