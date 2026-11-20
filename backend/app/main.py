@@ -74,7 +74,7 @@ class RoomStatusIn(BaseModel):
     unavailable_to: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 app = FastAPI(
-    title="STAR API",
+    title="Timetable+ API",
     description="Smart Timetable with Adaptive Reallocation",
     version="0.1.0",
     dependencies=[Depends(guard)],     # login check on every route

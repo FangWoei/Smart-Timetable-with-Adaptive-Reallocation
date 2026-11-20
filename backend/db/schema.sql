@@ -1,5 +1,5 @@
 -- ============================================================
--- STAR database schema (PostgreSQL / Supabase)
+-- Timetable+ database schema (PostgreSQL / Supabase)
 -- Run top to bottom on a fresh database.
 -- ============================================================
 

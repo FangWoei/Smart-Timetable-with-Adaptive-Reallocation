@@ -1,11 +1,11 @@
-# STAR — Smart Timetable with Adaptive Reallocation
+# Timetable+ — Smart Timetable with Adaptive Reallocation
 
 AI-powered timetable scheduling system with dynamic room reallocation and 3D campus visualization. Final-year project + iTEC competition entry.
 
 ## Repo layout (monorepo)
 
 ```
-star/
+timetable+/
 ├── frontend/     React + Vite + Tailwind
 ├── solver/       Python — GA / OR-Tools CP-SAT scheduling engine
 ├── docs/         Master plan, wireframes, data dictionaries, report drafts

@@ -1,4 +1,4 @@
-# Contributing to STAR
+# Contributing to Timetable+
 
 Small team, so keep this simple — the point is just that everyone's commits say **what kind of work it was**, so the history and PRs are easy to skim.
 
