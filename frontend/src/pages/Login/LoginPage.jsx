@@ -128,7 +128,7 @@ export default function LoginPage() {
               Welcome aboard
             </p>
             <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-[2.15rem]">
-              Sign in to STAR
+              Sign in to Timetable+
             </h2>
             <p className="mt-3 max-w-sm text-sm leading-6 text-ink-3">
               Access your academic scheduling workspace. Use the account an

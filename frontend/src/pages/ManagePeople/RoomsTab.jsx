@@ -175,7 +175,7 @@ export default function RoomsTab() {
         const n = res.affected_classes?.length || 0;
         if (n > 0)
           setNotice(
-            `${form.code} is now ${STATUS[form.status].label.toLowerCase()}: ${n} scheduled class${n > 1 ? "es are" : " is"} in this room and need a new room.`,
+            `${form.code} is now ${(STATUS[form.status] ?? STATUS.available).label.toLowerCase()}: ${n} scheduled class${n > 1 ? "es are" : " is"} in this room and need a new room.`,
           );
       }
     });
@@ -302,8 +302,8 @@ export default function RoomsTab() {
                   </td>
                   <td className="px-3 py-2 text-ink-2">{r.capacity} seats</td>
                   <td className="px-3 py-2">
-                    <Badge tone={STATUS[r.status].tone}>
-                      {STATUS[r.status].label}
+                    <Badge tone={(STATUS[r.status] ?? STATUS.available).tone}>
+                      {(STATUS[r.status] ?? STATUS.available).label}
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-right">
