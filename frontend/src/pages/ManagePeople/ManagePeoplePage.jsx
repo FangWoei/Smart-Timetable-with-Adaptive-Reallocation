@@ -1,5 +1,6 @@
 // src/pages/ManagePeople/ManagePeoplePage.jsx
 import { useSearchParams } from "react-router-dom";
+import PageHeader from "../../components/PageHeader.jsx";
 import Tabs from "../../components/Tabs.jsx";
 import LecturersTab from "./LecturersTab.jsx";
 import RoomsTab from "./RoomsTab.jsx";
@@ -11,6 +12,15 @@ const TABS = [
   { id: "rooms", label: "Rooms" },
 ];
 
+const HEADINGS = {
+  lecturers: [
+    "Manage lecturers",
+    "Staff list, full-time / part-time status and weekly availability.",
+  ],
+  subjects: ["Manage subjects", "Courses, hours per week and room needs."],
+  rooms: ["Manage rooms", "Classrooms, labs and maintenance status."],
+};
+
 // 主页面组件
 export default function ManagePeoplePage() {
   const [params, setParams] = useSearchParams();
@@ -19,7 +29,12 @@ export default function ManagePeoplePage() {
     : "lecturers";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <PageHeader
+        eyebrow={TABS.find((t) => t.id === tab)?.label}
+        title={HEADINGS[tab][0]}
+        subtitle={HEADINGS[tab][1]}
+      />
       <div className="shrink-0 border-b border-line bg-surface px-6 pt-3">
         <Tabs
           tabs={TABS}
@@ -28,7 +43,7 @@ export default function ManagePeoplePage() {
           label="People and resources"
         />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
+      <div className="flex flex-col p-6">
         {tab === "lecturers" ? (
           <LecturersTab />
         ) : tab === "subjects" ? (

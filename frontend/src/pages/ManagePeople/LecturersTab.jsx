@@ -36,7 +36,7 @@ const cellKey = (day, slot) => `${day}-${slot}`;
 
 const EMPTY_NEW = { name: "", email: "", password: "", type: "full-time" };
 const inputCls =
-  "mt-1 h-[30px] w-full rounded border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500";
+  "mt-1 h-9 w-full rounded-xl border border-line px-2 text-xs font-normal text-ink outline-none focus:border-navy-500";
 const labelCls =
   "block text-[11px] font-semibold uppercase tracking-wide text-ink-4";
 
@@ -182,6 +182,17 @@ export default function LecturersTab() {
     setBlocked(next);
   }
 
+  // One click on a day (or an hour row) turns the whole line off; if it is all off already, turns it back on.
+  function toggleLine(cells) {
+    if (blocked === null) return;
+    const next = new Set(blocked);
+    const allOff = cells.every((k) => next.has(k));
+    cells.forEach((k) => (allOff ? next.delete(k) : next.add(k)));
+    setBlocked(next);
+  }
+  const dayCells = (day) => SLOT_LABELS.map((_, i) => cellKey(day, i + 1));
+  const rowCells = (slot) => DAYS.map((_, di) => cellKey(di + 1, slot));
+
   async function handleSave() {
     if (!selected) return;
     setBusy(true);
@@ -249,11 +260,11 @@ export default function LecturersTab() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search lecturers…"
               aria-label="Search lecturers"
-              className="h-[30px] w-72 rounded border border-line bg-surface px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
+              className="h-9 w-72 rounded-xl border border-line bg-surface px-3 text-xs outline-none placeholder:text-ink-4 focus:border-navy-500"
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 rounded bg-panel p-0.5 border border-line text-xs">
+            <div className="flex items-center gap-1 rounded-xl bg-panel p-0.5 border border-line text-xs">
               {filterBtn("all", "All", lecturers.length)}
               {filterBtn(
                 "full-time",
@@ -269,13 +280,13 @@ export default function LecturersTab() {
             <button
               type="button"
               onClick={openAdd}
-              className="h-[30px] rounded bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors">
+              className="h-9 rounded-xl bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors">
               + Add lecturer
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-line bg-surface flex-1">
+        <div className="overflow-x-auto rounded-xl border border-line bg-surface flex-1">
           <table className="w-full text-left text-xs">
             <thead className="bg-panel text-[11px] text-ink-4">
               <tr>
@@ -334,7 +345,7 @@ export default function LecturersTab() {
                           e.stopPropagation();
                           openEdit(l.id);
                         }}
-                        className="rounded border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
+                        className="rounded-xl border border-line bg-surface px-3 py-1 text-xs text-ink-2 hover:bg-panel transition-colors">
                         Edit
                       </button>
                     </td>
@@ -385,7 +396,7 @@ export default function LecturersTab() {
       </div>
 
       {adding && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start sticky top-4 rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Add lecturer</h2>
             <button
@@ -456,14 +467,14 @@ export default function LecturersTab() {
             <button
               type="button"
               onClick={closePanel}
-              className="h-[28px] rounded border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">
+              className="h-9 rounded-xl border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">
               Cancel
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={handleAdd}
-              className="h-[28px] rounded bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors disabled:opacity-60">
+              className="h-9 rounded-xl bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors disabled:opacity-60">
               {busy ? "Adding…" : "Add lecturer"}
             </button>
           </div>
@@ -471,7 +482,7 @@ export default function LecturersTab() {
       )}
 
       {!adding && selected && (
-        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start rounded-md border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-[36rem] max-w-[50%] shrink-0 self-start sticky top-4 rounded-xl border border-line bg-surface p-5 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit lecturer</h2>
             <button
@@ -516,7 +527,8 @@ export default function LecturersTab() {
           {editType === "part-time" && (
             <div className="mt-4 border-t border-line pt-3">
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-                Weekly availability — click a cell to toggle
+                Weekly availability — click a cell to toggle, or a day / time to
+                toggle the whole line
               </div>
               {blocked === null ? (
                 <p className="mt-2 text-[11px] text-ink-4">
@@ -525,16 +537,34 @@ export default function LecturersTab() {
               ) : (
                 <div className="mt-2 grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-1.5 text-center text-[11px]">
                   <div></div>
-                  {DAYS.map((d) => (
-                    <div key={d} className="font-semibold text-ink-3">
-                      {d}
-                    </div>
-                  ))}
+                  {DAYS.map((d, di) => {
+                    const dayOff = dayCells(di + 1).every((k) =>
+                      blocked.has(k),
+                    );
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleLine(dayCells(di + 1))}
+                        title={
+                          dayOff
+                            ? `Make all of ${d} available`
+                            : `Mark all of ${d} unavailable`
+                        }
+                        className={`rounded-xl border py-1 font-semibold transition-colors ${dayOff ? "border-red-300 bg-danger-soft text-danger" : "border-line text-ink-3 hover:bg-panel"}`}>
+                        {d}
+                      </button>
+                    );
+                  })}
                   {SLOT_LABELS.map((label, i) => (
                     <div key={label} className="contents">
-                      <div className="flex items-center justify-end whitespace-nowrap pr-2 text-[10px] text-ink-4">
+                      <button
+                        type="button"
+                        onClick={() => toggleLine(rowCells(i + 1))}
+                        title={`Toggle ${label} for every day`}
+                        className="flex items-center justify-end whitespace-nowrap pr-2 text-[10px] text-ink-4 hover:text-ink">
                         {label}
-                      </div>
+                      </button>
                       {DAYS.map((_, di) => {
                         const off = blocked.has(cellKey(di + 1, i + 1));
                         return (
@@ -543,7 +573,7 @@ export default function LecturersTab() {
                             type="button"
                             onClick={() => toggleCell(di + 1, i + 1)}
                             aria-label={`${DAYS[di]} ${label} ${off ? "unavailable" : "available"}`}
-                            className={`flex h-7 items-center justify-center rounded border text-[10px] font-medium transition-all hover:opacity-80 ${off ? "border-red-300 bg-danger-soft text-danger" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
+                            className={`flex h-7 items-center justify-center rounded-xl border text-[10px] font-medium transition-all hover:opacity-80 ${off ? "border-red-300 bg-danger-soft text-danger" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
                             {off ? "off" : "avail"}
                           </button>
                         );
@@ -568,21 +598,21 @@ export default function LecturersTab() {
               type="button"
               disabled={busy}
               onClick={handleDelete}
-              className="h-[28px] rounded border border-danger/40 bg-surface px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
+              className="h-9 rounded-xl border border-danger/40 bg-surface px-2.5 text-xs font-semibold text-danger hover:bg-red-50 transition-colors disabled:opacity-60">
               Delete
             </button>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={closePanel}
-                className="h-[28px] rounded border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">
+                className="h-9 rounded-xl border border-line-strong px-3 text-xs text-ink-2 hover:bg-panel transition-colors">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={handleSave}
-                className="h-[28px] rounded bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors disabled:opacity-60">
+                className="h-9 rounded-xl bg-navy-700 px-3 text-xs font-semibold text-white hover:bg-navy-900 transition-colors disabled:opacity-60">
                 Save changes
               </button>
             </div>

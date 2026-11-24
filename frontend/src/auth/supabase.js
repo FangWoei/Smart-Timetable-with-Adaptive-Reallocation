@@ -5,7 +5,12 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // No Supabase keys in frontend/.env = login is switched off (local dev mode).
 export const authEnabled = Boolean(url && key);
-export const supabase = authEnabled ? createClient(url, key) : null;
+export const supabase = authEnabled
+  ? createClient(url, key, {
+      // Remember the login in this browser and renew it before it expires
+      auth: { persistSession: true, autoRefreshToken: true },
+    })
+  : null;
 
 export async function getToken() {
   if (!supabase) return null;

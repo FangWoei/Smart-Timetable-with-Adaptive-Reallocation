@@ -92,8 +92,9 @@ export default function LoginPage() {
             <span className="text-sky-200">In the right place.</span>
           </h1>
           <p className="mt-6 max-w-lg text-sm leading-7 text-[#eff6ff]/85 sm:text-base sm:leading-8">
-            A smarter way to plan the semester. STAR helps coordinate classes,
-            lecturers and classrooms through intelligent timetable scheduling.
+            A smarter way to plan the semester. Timetable+ helps coordinate
+            classes, lecturers and classrooms through intelligent timetable
+            scheduling.
           </p>
           <div className="mt-9 hidden items-center gap-3 text-xs font-medium tracking-wide text-white/75 sm:flex">
             <span className="h-px w-10 bg-sky-200/70" />
@@ -103,7 +104,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 hidden items-center justify-between border-t border-white/20 pt-5 text-[11px] text-white/65 lg:flex">
           <span>Batu Kawan, Penang, Malaysia</span>
-          <span>STAR · Academic Management</span>
+          <span>Timetable+ · Academic Management</span>
         </div>
       </section>
 
@@ -128,7 +129,7 @@ export default function LoginPage() {
               Welcome aboard
             </p>
             <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-[2.15rem]">
-              Sign in to STAR
+              Sign in to Timetable+
             </h2>
             <p className="mt-3 max-w-sm text-sm leading-6 text-ink-3">
               Access your academic scheduling workspace. Use the account an
@@ -286,13 +287,13 @@ export default function LoginPage() {
                 Your workspace is protected.
               </span>
               <br />
-              Sign-in is restricted to authorised STAR users.
+              Sign-in is restricted to authorised Timetable+ users.
             </p>
           </div>
 
           <p className="mt-10 text-center text-[10px] tracking-wide text-ink-4">
-            © {new Date().getFullYear()} STAR · Smart Timetable with Adaptive
-            Reallocation
+            © {new Date().getFullYear()} Timetable+ · Smart Timetable with
+            Adaptive Reallocation
           </p>
         </div>
       </section>

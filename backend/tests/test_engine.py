@@ -98,3 +98,56 @@ def test_checker_catches_peninsula_advantage_move(data, solve):
     entries = solve(data, seed=42)["entries"]
     entries[0]["day"], entries[0]["start_slot"] = 3, 7
     assert any("Peninsula Advantage" in p for p in check(data, entries))
+
+def _two_part_class(unavailable=None):
+    """One class of 4 hours cut into two 2-hour sessions, one lecturer, two rooms."""
+    data = {
+        "rooms": {"R1": {"cap": 40, "type": "lecture"}, "R2": {"cap": 40, "type": "lecture"}},
+        "groups": {"G1": 30},
+        "lessons": [
+            {"id": f"C-{i}", "class_id": "C", "module": f"M (part {i})", "groups": ["G1"],
+             "lecturer": "Tan", "hours": 2, "lab": False}
+            for i in (1, 2)
+        ],
+    }
+    if unavailable:
+        data["unavailable"] = unavailable
+    return data
+
+
+def test_two_sessions_are_put_together_in_one_room_when_they_fit():
+    data = _two_part_class()
+    entries = engine_v2.solve(data, seed=1)["entries"]
+    assert check(data, entries) == []
+    a, b = sorted(entries, key=lambda e: e["start_slot"])
+    assert a["day"] == b["day"]                      # one block
+    assert b["start_slot"] == a["start_slot"] + 2    # back-to-back
+    assert a["room"] == b["room"]                    # no room change in the middle
+
+
+def test_two_sessions_split_onto_two_days_when_they_cannot_sit_together():
+    # Tan can only teach 08:30-10:30 on Mon and Tue, so no 4-hour block exists.
+    cells = [[d, s] for d in range(1, 6) for s in range(1, 11)
+             if not (d in (1, 2) and s in (1, 2))]
+    data = _two_part_class({"Tan": cells})
+    entries = engine_v2.solve(data, seed=1)["entries"]
+    assert check(data, entries) == []
+    assert {e["day"] for e in entries} == {1, 2}
+
+
+def test_checker_rejects_same_class_back_to_back_in_different_rooms():
+    data = _two_part_class()
+    entries = [
+        {"lesson_id": "C-1", "room": "R1", "day": 1, "start_slot": 1},
+        {"lesson_id": "C-2", "room": "R2", "day": 1, "start_slot": 3},
+    ]
+    assert any("same room" in p for p in check(data, entries))
+
+
+def test_checker_rejects_same_class_same_day_with_a_gap():
+    data = _two_part_class()
+    entries = [
+        {"lesson_id": "C-1", "room": "R1", "day": 1, "start_slot": 1},
+        {"lesson_id": "C-2", "room": "R1", "day": 1, "start_slot": 5},
+    ]
+    assert any("back-to-back" in p for p in check(data, entries))

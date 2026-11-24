@@ -175,7 +175,7 @@ export default function RoomsTab() {
         const n = res.affected_classes?.length || 0;
         if (n > 0)
           setNotice(
-            `${form.code} is now ${STATUS[form.status].label.toLowerCase()}: ${n} scheduled class${n > 1 ? "es are" : " is"} in this room and need a new room.`,
+            `${form.code} is now ${(STATUS[form.status] ?? STATUS.available).label.toLowerCase()}: ${n} scheduled class${n > 1 ? "es are" : " is"} in this room and need a new room.`,
           );
       }
     });
@@ -302,8 +302,8 @@ export default function RoomsTab() {
                   </td>
                   <td className="px-3 py-2 text-ink-2">{r.capacity} seats</td>
                   <td className="px-3 py-2">
-                    <Badge tone={STATUS[r.status].tone}>
-                      {STATUS[r.status].label}
+                    <Badge tone={(STATUS[r.status] ?? STATUS.available).tone}>
+                      {(STATUS[r.status] ?? STATUS.available).label}
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -363,7 +363,7 @@ export default function RoomsTab() {
       </div>
 
       {adding && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start sticky top-4 rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Add room</h2>
             <button
@@ -396,7 +396,7 @@ export default function RoomsTab() {
       )}
 
       {!adding && selected && (
-        <aside className="w-80 shrink-0 self-start rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
+        <aside className="w-80 shrink-0 self-start sticky top-4 rounded-md border border-line bg-surface p-4 overflow-y-auto max-h-[85vh] shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-ink">Edit room</h2>
             <button

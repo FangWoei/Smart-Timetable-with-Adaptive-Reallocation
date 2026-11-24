@@ -22,22 +22,38 @@ export function AuthProvider({ children }) {
 
   const token = session?.access_token;
 
-  // Ask our own API who this is (role comes from the allowed_users table)
+  // Ask our own API who this is (role comes from the allowed_users table).
+  // The saved login is only thrown away when the server says "not allowed"
+  // (401 / 403). If the backend is just slow or not running yet, we try again
+  // and keep the login, so the user does not have to type the password again.
   useEffect(() => {
     if (!authEnabled || !token) return;
     let cancelled = false;
-    api
-      .me()
-      .then((user) => {
-        if (cancelled) return;
-        setMe(user);
-        setError("");
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e.message);
-        supabase.auth.signOut();
-      });
+    (async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const user = await api.me();
+          if (cancelled) return;
+          setMe(user);
+          setError("");
+          return;
+        } catch (e) {
+          if (cancelled) return;
+          if (e.status === 401 || e.status === 403) {
+            setError(e.message);
+            supabase.auth.signOut();
+            return;
+          }
+          if (attempt === 3) {
+            setError(
+              "Cannot reach the server right now. Make sure the backend is running, then refresh the page.",
+            );
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+    })();
     return () => {
       cancelled = true;
     };

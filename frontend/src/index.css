@@ -208,3 +208,8 @@ body {
   --color-blue-900: #1e3a8a;
   --lesson-text-l: 22%;
 }
+
+/* The logo is dark on a see-through background: show it in white on dark mode */
+:root[data-theme="dark"] .logo-img {
+  filter: invert(1) hue-rotate(180deg);
+}

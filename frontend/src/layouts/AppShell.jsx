@@ -11,7 +11,12 @@ function describe(user) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  return { name, initials, role: user.role === "admin" ? "Admin" : "Lecturer" };
+  return {
+    name,
+    email: user.email,
+    initials,
+    role: user.role === "admin" ? "Admin" : "Lecturer",
+  };
 }
 
 export default function AppShell() {

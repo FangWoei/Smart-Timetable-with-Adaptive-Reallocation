@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../api";
+import DatePicker from "../../components/DatePicker.jsx";
+import PageHeader from "../../components/PageHeader.jsx";
 import Tabs from "../../components/Tabs.jsx";
 import { refreshSemester } from "../../semester.js";
 
@@ -37,48 +39,145 @@ const MANUAL_CATEGORIES = [
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
 const TIME_SLOTS = ["08-10", "10-12", "13-15", "15-17"];
 
-function SemesterDates({ dates, setDates, onSave, busy, error, saved }) {
-  const input =
-    "mt-1 h-[30px] rounded border border-line px-2 text-xs outline-none focus:border-navy-500";
+// How long the semester is: calendar weeks and Mon-Fri teaching days
+function spanOf(start, end) {
+  if (!start || !end || end <= start) return null;
+  const a = new Date(`${start}T00:00:00`);
+  const b = new Date(`${end}T00:00:00`);
+  const days = Math.round((b - a) / 86400000) + 1;
+  if (days > 800) return null;
+  let teaching = 0;
+  for (let i = 0; i < days; i++) {
+    const d = new Date(a);
+    d.setDate(a.getDate() + i);
+    const w = d.getDay();
+    if (w !== 0 && w !== 6) teaching++;
+  }
+  return { weeks: Math.ceil(days / 7), teaching };
+}
+
+const Icon = ({ d, className = "h-5 w-5" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true">
+    {d}
+  </svg>
+);
+
+function StepCard({ n, title, hint, children, aside }) {
   return (
-    <div className="mt-4 rounded-md border border-line bg-surface p-4">
-      <h2 className="text-[13px] font-semibold text-ink">Semester dates</h2>
-      <p className="mt-1 text-xs text-ink-3">
-        Used to turn the weekly timetable into real calendar dates and to mark
-        holidays. They are saved when you press Save dates or Confirm import.
-      </p>
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-          Start date
-          <input
-            type="date"
-            value={dates.start}
-            onChange={(e) => setDates({ ...dates, start: e.target.value })}
-            className={`block ${input}`}
-          />
-        </label>
-        <label className="text-[11px] font-semibold uppercase tracking-wide text-ink-4">
-          End date
-          <input
-            type="date"
-            value={dates.end}
-            onChange={(e) => setDates({ ...dates, end: e.target.value })}
-            className={`block ${input}`}
-          />
-        </label>
+    <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+      <div className="mb-5 flex items-start gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-navy-50 text-sm font-bold text-navy-700">
+          {n}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-ink">{title}</h2>
+          <p className="mt-0.5 text-xs leading-5 text-ink-3">{hint}</p>
+        </div>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SemesterDates({
+  dates,
+  setDates,
+  savedDates,
+  onSave,
+  busy,
+  error,
+  saved,
+}) {
+  const span = spanOf(dates.start, dates.end);
+  const isSaved =
+    savedDates &&
+    savedDates.start === dates.start &&
+    savedDates.end === dates.end;
+  const badOrder = dates.start && dates.end && dates.end <= dates.start;
+
+  return (
+    <StepCard
+      n="1"
+      title="Semester dates"
+      hint="Turns the weekly timetable into real calendar dates and marks public holidays. Saved when you press Save dates or Confirm import."
+      aside={
+        dates.start && dates.end ? (
+          <span
+            className={`hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold sm:flex ${
+              isSaved
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}>
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${isSaved ? "bg-ok" : "bg-warn"}`}
+            />
+            {isSaved ? "Saved" : "Not saved yet"}
+          </span>
+        ) : null
+      }>
+      <div className="grid items-start gap-4 sm:grid-cols-[1fr_auto_1fr]">
+        <DatePicker
+          label="Start date"
+          value={dates.start}
+          onChange={(v) => setDates({ ...dates, start: v })}
+          rangeStart={dates.start}
+          rangeEnd={dates.end}
+        />
+        <span aria-hidden className="mt-[38px] hidden text-ink-4 sm:block">
+          <Icon d={<path d="M5 12h14m-6-6 6 6-6 6" />} className="h-4 w-4" />
+        </span>
+        <DatePicker
+          label="End date"
+          value={dates.end}
+          onChange={(v) => setDates({ ...dates, end: v })}
+          disableUntil={dates.start || undefined}
+          rangeStart={dates.start}
+          rangeEnd={dates.end}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+        {span ? (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-tint px-3 py-1 font-semibold text-navy-700">
+              {span.weeks} weeks
+            </span>
+            <span className="rounded-full bg-tint px-3 py-1 font-semibold text-navy-700">
+              {span.teaching} teaching days (Mon–Fri)
+            </span>
+          </div>
+        ) : (
+          <span
+            className={`text-xs ${badOrder ? "text-danger" : "text-ink-4"}`}>
+            {badOrder
+              ? "The end date must be after the start date."
+              : "Choose both dates to see how long the semester is."}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => onSave().catch(() => {})}
-          disabled={busy}
-          className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:opacity-50">
+          disabled={busy || isSaved || !dates.start || !dates.end}
+          className="ml-auto h-10 rounded-xl bg-navy-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-40">
           Save dates
         </button>
       </div>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-      {!error && saved && (
-        <p className="mt-2 text-xs text-green-700">{saved}</p>
+      {error && (
+        <p role="alert" className="mt-3 text-xs text-danger">
+          {error}
+        </p>
       )}
-    </div>
+      {!error && saved && <p className="mt-3 text-xs text-ok">{saved}</p>}
+    </StepCard>
   );
 }
 
@@ -89,10 +188,7 @@ function BulkImport() {
   const [dateError, setDateError] = useState("");
   const [dateNote, setDateNote] = useState("");
   const [file, setFile] = useState(null);
-  
-  // 第二个拖拽框的文件状态（Semester start and end dates）
-  const [semesterFile, setSemesterFile] = useState(null);
-
+  const [over, setOver] = useState(false); // a file is being dragged over the box
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -184,203 +280,255 @@ function BulkImport() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <h1 className="text-lg font-semibold text-ink">Import course listing</h1>
-      <p className="mt-1 text-sm text-ink-3">
-        Upload the Course Listing CSV or Excel file. Student names in the file are ignored —
-        only the head count per class is read.
-      </p>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
-        <label
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            pick(e.dataTransfer.files?.[0]);
-          }}
-          className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-surface text-center hover:border-navy-500">
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xlsm"
-            className="sr-only"
-            onChange={(e) => pick(e.target.files?.[0])}
-          />
-          {file ? (
-            <>
-              <span className="text-sm font-medium text-ink">{file.name}</span>
-              <span className="text-xs text-ink-4">
-                {(file.size / 1024).toFixed(0)} KB · choose another to replace
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-sm text-ink-2">
-                Drag a file here, or click to browse
-              </span>
-              <span className="text-xs text-ink-4">
-                .csv, .xlsx or .xlsm, up to 10 MB
-              </span>
-              <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
-                Choose file
-              </span>
-            </>
-          )}
-        </label>
-
-        <aside className="rounded-md border border-line bg-surface p-4 text-xs text-ink-2">
-          <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
-          <ul className="mt-2 list-disc space-y-1.5 pl-4">
-            <li>Intake group, level and head count</li>
-            <li>Course code, name and hours per week</li>
-            <li>Lecturer name and full-time / part-time</li>
-            <li className="text-ink-4">Student names are skipped</li>
-          </ul>
-        </aside>
-      </div>
-
-      {/* 第二个拖拽文件框：专门用于导入学期起止日期文件 */}
-      <div className="border-t border-line pt-6 mt-6">
-        <h2 className="text-lg font-semibold text-ink">Import semester start and end dates</h2>
-        <p className="mt-1 text-sm text-ink-3">
-          Upload the CSV containing semester start and end dates.
-        </p>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_280px]">
-          <label
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              pickSemester(e.dataTransfer.files?.[0]);
-            }}
-            className="flex h-56 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-line-strong bg-surface text-center hover:border-navy-500">
-            <input
-              type="file"
-              accept=".csv"
-              className="sr-only"
-              onChange={(e) => pickSemester(e.target.files?.[0])}
+    <div className="flex flex-1 flex-col px-6 pt-6">
+      <div className="mx-auto w-full max-w-5xl flex-1 pb-6">
+        <div className="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-5">
+            <SemesterDates
+              dates={dates}
+              setDates={setDates}
+              savedDates={savedDates}
+              onSave={saveDates}
+              busy={busy}
+              error={dateError}
+              saved={dateNote}
             />
-            {semesterFile ? (
-              <>
-                <span className="text-sm font-medium text-ink">{semesterFile.name}</span>
-                <span className="text-xs text-ink-4">
-                  {(semesterFile.size / 1024).toFixed(0)} KB · choose another to replace
+
+            <StepCard
+              n="2"
+              title="Course listing file"
+              hint="Drag the file in, or click the box to browse. You can preview it before anything is saved.">
+              <label
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!over) setOver(true);
+                }}
+                onDragLeave={() => setOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setOver(false);
+                  pick(e.dataTransfer.files?.[0]);
+                }}
+                className={`flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition ${
+                  over
+                    ? "border-navy-500 bg-navy-50"
+                    : file
+                      ? "border-navy-200 bg-tint"
+                      : "border-line-strong bg-panel hover:border-navy-500 hover:bg-navy-50"
+                }`}>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xlsm"
+                  className="sr-only"
+                  onChange={(e) => pick(e.target.files?.[0])}
+                />
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-navy-700 shadow-sm">
+                  {file ? (
+                    <Icon
+                      d={
+                        <>
+                          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" />
+                          <path d="M14 3v5h5M9 14l2 2 4-4" />
+                        </>
+                      }
+                    />
+                  ) : (
+                    <Icon
+                      d={
+                        <>
+                          <path d="M12 16V4m0 0L7 9m5-5 5 5" />
+                          <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+                        </>
+                      }
+                    />
+                  )}
                 </span>
-              </>
-            ) : (
-              <>
-                <span className="text-sm text-ink-2">
-                  Drag a file here, or click to browse
-                </span>
-                <span className="text-xs text-ink-4">.csv up to 2 MB</span>
-                <span className="mt-1 rounded border border-line-strong px-3 py-1 text-[13px] text-ink-2">
-                  Choose file
-                </span>
-              </>
-            )}
-          </label>
-
-          <aside className="rounded-md border border-line bg-surface p-4 text-xs text-ink-2">
-            <h2 className="text-[13px] font-semibold text-ink">What gets read</h2>
-            <ul className="mt-2 list-disc space-y-1.5 pl-4">
-              <li>Semester start and end dates</li>
-              <li>Term durations and schedules</li>
-              <li className="text-ink-4">Academic calendar mapping</li>
-            </ul>
-          </aside>
-        </div>
-      </div>
-
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-      {done && <p className="mt-3 text-sm text-green-700">{done}</p>}
-
-      {preview && (
-        <div className="mt-6 space-y-4">
-          {preview.warnings.length > 0 && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
-              <p className="text-[13px] font-semibold text-amber-900">
-                Check these with the coordinator
-              </p>
-              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-amber-800">
-                {preview.warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <h2 className="text-[13px] font-semibold text-ink">
-            {preview.classes.length} classes ·{" "}
-            {Object.keys(preview.groups).length} intake groups
-          </h2>
-
-          <div className="overflow-x-auto rounded-md border border-line bg-surface">
-            <table className="w-full text-xs">
-              <thead className="bg-panel text-left text-ink-2">
-                <tr>
-                  {[
-                    "Code",
-                    "Module",
-                    "Groups",
-                    "Students",
-                    "Hours",
-                    "Lecturer",
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2 font-semibold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.classes.map((c) => (
-                  <tr key={c.id} className="border-t border-line">
-                    <td className="px-3 py-2 font-medium text-ink">{c.id}</td>
-                    <td className="px-3 py-2 text-ink-2">{c.module}</td>
-                    <td className="px-3 py-2 text-ink-4">
-                      {c.groups.join(", ")}
-                    </td>
-                    <td className="px-3 py-2 text-ink-2">{c.students}</td>
-                    <td className="px-3 py-2 text-ink-2">{c.weekly_hours}h</td>
-                    <td className="px-3 py-2 text-ink-2">
-                      {c.lecturer}
-                      {c.part_time && (
-                        <span className="ml-1 rounded bg-panel px-1 text-[10px]">
-                          PT
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                {file ? (
+                  <>
+                    <span className="text-sm font-semibold text-ink">
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-ink-3">
+                      {(file.size / 1024).toFixed(0)} KB · click to choose
+                      another
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold text-ink">
+                      Drag a file here, or click to browse
+                    </span>
+                    <span className="text-xs text-ink-3">
+                      .csv or .xlsx, up to 10 MB
+                    </span>
+                  </>
+                )}
+              </label>
+            </StepCard>
           </div>
 
-          {preview.skipped.length > 0 && (
-            <p className="text-xs text-ink-4">
-              Skipped (not timetabled):{" "}
-              {preview.skipped.map((s) => `${s.code} ${s.group}`).join(", ")}
+          {/* Same dark blue as the login picture side, so it works in light and dark mode */}
+          <aside className="rounded-2xl bg-[#0b2948] p-6 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-200">
+              What gets read
             </p>
-          )}
+            <ul className="mt-4 space-y-3 text-sm text-[#eff6ff]/90">
+              {[
+                "Intake group, level and head count",
+                "Course code, name and hours per week",
+                "Lecturer name and full-time / part-time",
+              ].map((t) => (
+                <li key={t} className="flex gap-2.5">
+                  <Icon
+                    d={<path d="m5 12.5 4.5 4.5L19 7.5" />}
+                    className="mt-0.5 h-4 w-4 shrink-0 text-sky-300"
+                  />
+                  {t}
+                </li>
+              ))}
+              <li className="flex gap-2.5 text-[#eff6ff]/55">
+                <Icon
+                  d={<path d="M6 6l12 12M18 6 6 18" />}
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                />
+                Student names are skipped
+              </li>
+            </ul>
+            <div className="mt-5 border-t border-white/15 pt-4 text-xs leading-5 text-[#eff6ff]/70">
+              After you confirm, the first timetable is made for you and the
+              Scheduler opens on “Show all”.
+            </div>
+          </aside>
         </div>
-      )}
 
-      <div className="mt-6 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            pick(null);
-            pickSemester(null);
-          }}
-          className="h-[30px] rounded border border-line-strong bg-surface px-4 text-[13px] text-ink-2 hover:bg-panel">
-          Discard
-        </button>
-        <button
-          type="button"
-          disabled={!file || busy}
-          onClick={() => run(preview ? "commit" : "preview")}
-          className="h-[30px] rounded bg-navy-700 px-4 text-[13px] font-semibold text-white hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-40">
-          {busy ? "Working…" : preview ? "Confirm import" : "Preview"}
-        </button>
+        {error && (
+          <p
+            role="alert"
+            className="mt-5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+            {error}
+          </p>
+        )}
+        {done && (
+          <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            {done}
+          </p>
+        )}
+
+        {preview && (
+          <div className="mt-6 space-y-4">
+            {preview.warnings.length > 0 && (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                <p className="text-[13px] font-semibold text-amber-900">
+                  Check these with the coordinator
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-amber-800">
+                  {preview.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-semibold text-ink">Preview</h2>
+              <span className="rounded-full bg-tint px-3 py-1 text-xs font-semibold text-navy-700">
+                {preview.classes.length} classes
+              </span>
+              <span className="rounded-full bg-tint px-3 py-1 text-xs font-semibold text-navy-700">
+                {Object.keys(preview.groups).length} intake groups
+              </span>
+            </div>
+
+            <div className="max-h-[420px] overflow-auto rounded-2xl border border-line bg-surface shadow-sm">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-panel text-left text-ink-2">
+                  <tr>
+                    {[
+                      "Code",
+                      "Module",
+                      "Groups",
+                      "Students",
+                      "Hours",
+                      "Lecturer",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wide">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.classes.map((c) => (
+                    <tr key={c.id} className="border-t border-line">
+                      <td className="px-4 py-2.5 font-semibold text-ink">
+                        {c.id}
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-2">{c.module}</td>
+                      <td className="px-4 py-2.5 text-ink-4">
+                        {c.groups.join(", ")}
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-2">{c.students}</td>
+                      <td className="px-4 py-2.5 text-ink-2">
+                        {c.weekly_hours}h
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-2">
+                        {c.lecturer}
+                        {c.part_time && (
+                          <span className="ml-1.5 rounded bg-panel px-1.5 py-0.5 text-[10px] font-semibold">
+                            PT
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {preview.skipped.length > 0 && (
+              <p className="text-xs text-ink-4">
+                Skipped (not timetabled):{" "}
+                {preview.skipped.map((s) => `${s.code} ${s.group}`).join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Pinned to the bottom of the screen, even when the page is short */}
+      <div className="sticky bottom-0 -mx-6 border-t border-line bg-canvas/90 px-6 py-4 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-5xl justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => pick(null)}
+            className="h-11 rounded-xl border border-line-strong bg-surface px-5 text-sm font-medium text-ink-2 transition hover:bg-panel">
+            Discard
+          </button>
+          <button
+            type="button"
+            disabled={!file || busy}
+            onClick={() => run(preview ? "commit" : "preview")}
+            className="group flex h-11 items-center gap-2 rounded-xl bg-navy-700 px-6 text-sm font-semibold text-white shadow-lg shadow-navy-900/15 transition duration-200 hover:-translate-y-0.5 hover:bg-navy-900 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40">
+            {busy ? "Working…" : preview ? "Confirm import" : "Preview"}
+            {!busy && (
+              <svg
+                className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true">
+                <path
+                  d="M5 12h14m-6-6 6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -531,7 +679,7 @@ function ManualImport() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-[560px] flex-1">
       <aside className="flex w-[260px] shrink-0 flex-col border-r border-line bg-surface">
         <ul className="min-h-0 flex-1 overflow-y-auto space-y-0.5">
           {MANUAL_CATEGORIES.map((cat) => {
@@ -1159,8 +1307,13 @@ export default function ImportDataPage() {
     : "bulk";
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto flex flex-col">
-      <div className="border-b border-line bg-surface px-6 pt-3 shrink-0">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      <PageHeader
+        eyebrow="Import data"
+        title="Import course listing"
+        subtitle="Upload the Course Listing (.csv or .xlsx). Student names in the file are ignored — only the head count per class is read."
+      />
+      <div className="shrink-0 border-b border-line bg-surface px-6 pt-3">
         <Tabs
           tabs={TABS}
           value={tab}
@@ -1168,14 +1321,8 @@ export default function ImportDataPage() {
           label="Import mode"
         />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">
-        {tab === "bulk" ? (
-          <div className="p-6">
-            <BulkImport />
-          </div>
-        ) : (
-          <ManualImport />
-        )}
+      <div className="flex flex-1 flex-col">
+        {tab === "bulk" ? <BulkImport /> : <ManualImport />}
       </div>
     </div>
   );

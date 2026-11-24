@@ -1,5 +1,5 @@
 # AI Timetable Scheduling System — Master Plan
-*Working name: STAR (Smart Timetable with Adaptive Reallocation)*
+*Working name: Timetable+ (Smart Timetable with Adaptive Reallocation)*
 *Last updated: 14 Sep 2026*
 
 ---

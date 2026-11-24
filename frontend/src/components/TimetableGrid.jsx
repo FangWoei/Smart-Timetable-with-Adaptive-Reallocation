@@ -32,7 +32,7 @@ const SLOTS = TIME_SLOTS.length;
 const DAY_COL_W = 96;
 const HOL_COL_W = 150;
 const BASE_COL_W = 66;
-const ROW_H = "h-12";
+const ROW_H_BASE = 48;
 
 const EXPORT_PAGE_W = 1047;
 const EXPORT_DAY_COL_W = 84;
@@ -215,8 +215,10 @@ function LessonCard({
   draggable,
   onDragStart,
   onDragEnd,
+  scale = 1,
 }) {
   const { conflict, startDate, endDate, locked } = lesson;
+  const fs = (px) => ({ fontSize: `${Math.round(px * scale * 10) / 10}px` });
 
   // A div, not a <button>: Firefox does not start a drag from a button.
   return (
@@ -233,9 +235,12 @@ function LessonCard({
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      style={conflict ? undefined : { borderColor: colors.border }}
+      style={{
+        padding: `${Math.round(6 * scale)}px`,
+        ...(conflict ? {} : { borderColor: colors.border }),
+      }}
       className={[
-        "block w-full space-y-1 overflow-hidden rounded border bg-surface p-1.5 text-left shadow-xs transition-shadow hover:shadow-sm",
+        "block w-full space-y-1 overflow-hidden rounded border bg-surface text-left shadow-xs transition-shadow hover:shadow-sm",
         draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         conflict
           ? "border-red-300 outline outline-2 -outline-offset-2 outline-danger"
@@ -244,8 +249,8 @@ function LessonCard({
       ].join(" ")}>
       <div className="flex items-start justify-between gap-1">
         <p
-          style={conflict ? undefined : { color: colors.text }}
-          className={`min-w-0 truncate text-[10px] font-bold leading-tight ${conflict ? "text-red-900" : ""}`}>
+          style={{ ...fs(10), ...(conflict ? {} : { color: colors.text }) }}
+          className={`min-w-0 truncate font-bold leading-tight ${conflict ? "text-red-900" : ""}`}>
           {locked && (
             <svg
               width="9"
@@ -264,7 +269,8 @@ function LessonCard({
         </p>
         {(startDate || endDate) && (
           <span
-            className="shrink-0 whitespace-nowrap rounded bg-panel px-1 py-0.5 font-mono text-[8px] text-ink-4"
+            style={fs(8)}
+            className="shrink-0 whitespace-nowrap rounded bg-panel px-1 py-0.5 font-mono text-ink-4"
             title={`Active: ${startDate} to ${endDate}`}>
             {shortDate(startDate)} ~ {shortDate(endDate)}
           </span>
@@ -273,11 +279,14 @@ function LessonCard({
 
       <div className="flex items-start justify-between gap-1.5">
         <p
-          className="min-w-0 flex-1 break-words text-[9px] leading-tight text-ink-3"
+          style={fs(9)}
+          className="min-w-0 flex-1 break-words leading-tight text-ink-3"
           title={lesson.lecturer}>
           {lesson.lecturer || "TBA"}
         </p>
-        <span className="shrink-0 whitespace-nowrap rounded bg-panel px-1 py-0.5 text-[9px] font-medium leading-tight text-ink-2">
+        <span
+          style={fs(9)}
+          className="shrink-0 whitespace-nowrap rounded bg-panel px-1 py-0.5 font-medium leading-tight text-ink-2">
           {lesson.room || "No Room"}
         </span>
       </div>
@@ -534,6 +543,7 @@ export default function TimetableGrid({
                         ) : (
                           <LessonCard
                             lesson={lesson}
+                            scale={zoom / 100}
                             isSelected={isSelected}
                             colors={colors}
                             draggable={canDrag && !lesson.locked}
@@ -559,8 +569,11 @@ export default function TimetableGrid({
                   return (
                     <tr
                       key={`${dayName}-${laneIdx}`}
-                      className={exportMode ? "" : ROW_H}
-                      style={exportMode ? { height: EXPORT_ROW_H } : undefined}>
+                      style={{
+                        height: exportMode
+                          ? EXPORT_ROW_H
+                          : Math.round(ROW_H_BASE * (zoom / 100)),
+                      }}>
                       {laneIdx === 0 && (
                         <td
                           rowSpan={lanes.length}
@@ -574,13 +587,13 @@ export default function TimetableGrid({
                           className="sticky z-10 border-r border-line bg-surface p-1.5 align-top"
                           style={{ left: DAY_COL_W }}>
                           {holidaysByDay[dayIdx].length === 0 ? (
-                            <span className="text-[9px] text-ink-4">–</span>
+                            <span className="text-[15px] text-ink-4">–</span>
                           ) : (
                             <ul className="space-y-1">
                               {holidaysByDay[dayIdx].map((h) => (
                                 <li
                                   key={h.holiday_date}
-                                  className="text-[9px] leading-tight">
+                                  className="text-[15px] leading-tight">
                                   <span className="font-semibold text-danger">
                                     {dmy(h.holiday_date).slice(0, 5)}
                                   </span>{" "}

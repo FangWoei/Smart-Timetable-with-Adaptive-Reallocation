@@ -31,7 +31,7 @@ export default function BottomPanels({
   const lit = canUnplace && over;
 
   return (
-    <div className="mt-4 flex flex-col gap-4 shrink-0">
+    <div className="flex shrink-0 flex-col gap-4">
       {/* Unplaced Lessons：来自数据库、还没排进时间表的课程 */}
       <div
         onDragOver={(e) => {
@@ -56,7 +56,7 @@ export default function BottomPanels({
               ? "border-dashed border-navy-500 bg-surface"
               : "border-line bg-surface"
         }`}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-[13px] font-semibold text-ink">
               Unplaced lessons
@@ -78,7 +78,7 @@ export default function BottomPanels({
           </button>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-1 min-h-[76px]">
+        <div className="flex min-h-[64px] gap-3 overflow-x-auto pb-1">
           {unplacedLessons.map((lesson) => {
             const tone = TONES[lesson.tone] || TONES.navy;
             return (
