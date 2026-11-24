@@ -243,13 +243,6 @@ function BulkImport() {
     setError("");
   }
 
-  // 第二个框的文件选择处理函数
-  function pickSemester(f) {
-    setSemesterFile(f ?? null);
-    setError("");
-    setDone("");
-  }
-
   async function run(action) {
     if (!file) return;
     setBusy(true);
