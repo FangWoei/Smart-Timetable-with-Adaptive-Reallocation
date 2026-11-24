@@ -20,7 +20,7 @@ def check(data, entries):
     busy = {}
     unavailable = lecturer_blocked(data)
     hours_busy = defaultdict(set)         # (kind, who, day) -> 1-based hours in use
-    class_days = defaultdict(set)
+    class_days = defaultdict(list)
     for e in entries:
         lid = e["lesson_id"]
         l = lessons.get(lid)
@@ -51,10 +51,9 @@ def check(data, entries):
                 problems.append(f"{lid}: {l['lecturer']} is not available on {day_name} at {slot_time(t - 1)}")
                 break
 
+        # Same class, same day is fine only as one block: back-to-back, same room
         cid = l.get("class_id", lid)
-        if e["day"] in class_days[cid]:
-            problems.append(f"{cid}: two sessions on day {e['day']}")
-        class_days[cid].add(e["day"])
+        class_days[cid, e["day"]].append((start, l["hours"], e["room"], lid))
 
         if not l["lab"] and room["type"] == "lab":
             problems.append(f"{lid}: non-lab class in lab room {e['room']}")
@@ -84,5 +83,20 @@ def check(data, entries):
         if longest > MAX_BUSY_RUN:
             problems.append(f"{kind} {who}: {longest} hours in a row on {DAYS[day - 1]}, "
                             f"maximum is {MAX_BUSY_RUN} (2 classes)")
+
+    for (cid, day), items in class_days.items():
+        if len(items) < 2:
+            continue
+        items.sort()
+        day_name = DAYS[day - 1] if 1 <= day <= len(DAYS) else f"day {day}"
+        for (s1, h1, r1, _), (s2, _, r2, _) in zip(items, items[1:]):
+            if s1 + h1 != s2:
+                problems.append(
+                    f"{cid}: two sessions on {day_name} must be back-to-back "
+                    f"(or on different days)")
+            elif r1 != r2:
+                problems.append(
+                    f"{cid}: back-to-back sessions on {day_name} must stay in "
+                    f"the same room ({r1} -> {r2})")
 
     return problems

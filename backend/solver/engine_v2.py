@@ -31,7 +31,6 @@ def plan_times(lessons, rooms, groups, size, pinned, unavailable, time_limit, se
     x = {}
     lect_use, group_use = defaultdict(list), defaultdict(list)
     room_demand = defaultdict(list)
-    class_day = defaultdict(list)
     penalties = []
 
     for l in lessons:
@@ -48,7 +47,6 @@ def plan_times(lessons, rooms, groups, size, pinned, unavailable, time_limit, se
                 v = model.new_bool_var(f"{l['id']}_{d}_{s}")
                 x[l["id"], d, s] = v
                 choices.append(v)
-                class_day[l.get("class_id", l["id"]), d].append(v)
                 for t in range(s, s + l["hours"]):
                     lect_use[l["lecturer"], d, t].append(v)
                     for g in l["groups"]:
@@ -68,9 +66,42 @@ def plan_times(lessons, rooms, groups, size, pinned, unavailable, time_limit, se
     limit_runs(model, lect_use, {l["lecturer"] for l in lessons})
     limit_runs(model, group_use, groups)
 
-    # Hard: two sessions of the same class never land on the same day
-    for vs in class_day.values():
-        model.add_at_most_one(vs)
+    # Sessions of one class: the system TRIES to put them together in one block
+    # (back-to-back, e.g. 2 + 2 = one 4-hour class). If that does not fit, they
+    # are split onto different days. Nothing forces either choice: it is a
+    # preference (soft), with one hard condition: if two sessions of a class
+    # do share a day, they must be back-to-back so nobody waits in between.
+    by_class = defaultdict(list)
+    for l in lessons:
+        by_class[l.get("class_id", l["id"])].append(l)
+
+    def on_day(lid, d):
+        return [v for (i, dd, _), v in x.items() if i == lid and dd == d]
+
+    def start_expr(lid, d):
+        return sum(s * v for (i, dd, s), v in x.items() if i == lid and dd == d)
+
+    for cid, parts in by_class.items():
+        for i, a in enumerate(parts):
+            for b in parts[i + 1:]:
+                both_days = []
+                for d in range(len(DAYS)):
+                    va, vb = on_day(a["id"], d), on_day(b["id"], d)
+                    if not va or not vb:
+                        continue
+                    both = model.new_bool_var(f"both_{a['id']}_{b['id']}_{d}")
+                    model.add(sum(va) + sum(vb) >= 2).only_enforce_if(both)
+                    model.add(sum(va) + sum(vb) <= 1).only_enforce_if(both.Not())
+                    a_first = model.new_bool_var(f"first_{a['id']}_{b['id']}_{d}")
+                    model.add(start_expr(b["id"], d) - start_expr(a["id"], d)
+                              == a["hours"]).only_enforce_if([both, a_first])
+                    model.add(start_expr(a["id"], d) - start_expr(b["id"], d)
+                              == b["hours"]).only_enforce_if([both, a_first.Not()])
+                    both_days.append(both)
+                # Soft: prefer together; apart costs a little
+                apart = model.new_bool_var(f"apart_{a['id']}_{b['id']}")
+                model.add(sum(both_days) + apart == 1)
+                penalties.append(4 * apart)
 
     # Hard: every hour, enough rooms of the right type and size
     for is_lab in (False, True):
@@ -143,6 +174,27 @@ def assign_rooms(lessons, rooms, size, times, pinned, time_limit, seed):
 
     for vs in room_use.values():
         model.add_at_most_one(vs)
+
+    # Hard: sessions of one class that sit on the same day (back-to-back) stay
+    # in the same room, so students and lecturer do not move in the middle.
+    by_class = defaultdict(list)
+    for l in lessons:
+        by_class[l.get("class_id", l["id"])].append(l)
+    for parts in by_class.values():
+        for i, a in enumerate(parts):
+            for b in parts[i + 1:]:
+                if times[a["id"]][0] != times[b["id"]][0]:
+                    continue
+                if pinned.get(a["id"]) and pinned.get(b["id"]):
+                    continue          # both fixed by hand: leave as they are
+                for r in rooms:
+                    ya, yb = y.get((a["id"], r)), y.get((b["id"], r))
+                    if ya is not None and yb is not None:
+                        model.add(ya == yb)
+                    elif ya is not None:
+                        model.add(ya == 0)
+                    elif yb is not None:
+                        model.add(yb == 0)
 
     model.minimize(sum(costs))
     solver = _new_solver(time_limit, seed)
